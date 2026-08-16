@@ -1,0 +1,2389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ROW Line List Pro</title>
+<style>
+  html,body,#root{height:100%;margin:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  #boot{display:flex;align-items:center;justify-content:center;height:100%;
+        color:#12325C;font-size:14px;letter-spacing:.02em}
+</style>
+<script crossorigin src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone@7.25.6/babel.min.js"></script>
+</head>
+<body>
+<div id="root"><div id="boot">Loading ROW Line List Pro&hellip;</div></div>
+
+<script type="text/babel" data-presets="react">
+const { useState, useMemo, useEffect, useRef, useCallback } = React;
+
+/* ========================= SCHEMA (v14) ========================= */
+const SCHEMA_VERSION = "v14";
+const TAB_ORDER = ["Project","Parent Tract","Owner","Location","Title","Field Survey","Plat","Acquisition","Legal","Cost","Crossings","Construction","Operations","System"];
+const CORE_FIELDS = [{"i":1001,"n":"Asset","a":"Asset Name","t":["Project"],"y":"Short Text"},{"i":1002,"n":"ProjectNam","a":"Project Name","t":["Project"],"y":"Short Text"},{"i":1003,"n":"ProjType","a":"Project Type","t":["Project"],"y":"List","o":["Pipeline","Facility","Powerline","Road","Railroad","Other"]},{"i":2001,"n":"ProjectID","a":"Project ID","t":["Parent Tract"],"y":"Short Text"},{"i":2002,"n":"ProjSize","a":"Project Size","t":["Parent Tract"],"y":"Short Text"},{"i":2003,"n":"Online","a":"Online Y/N","t":["Parent Tract"],"y":"List","o":["Y","N"]},{"i":2004,"n":"Order","a":"Order","t":["Parent Tract"],"y":"Decimal Number"},{"i":2005,"n":"TractID","a":"Tract ID","t":["Parent Tract"],"y":"Short Text"},{"i":2006,"n":"TractName","a":"Tract Name","t":["Parent Tract"],"y":"Short Text"},{"i":2007,"n":"TractType","a":"Tract Type","t":["Parent Tract"],"y":"List","o":["Parent","Owner","Permit","Encroachment","Exclusive Easement","Proposed","Other"]},{"i":2008,"n":"Impact","a":"Impact","t":["Parent Tract"],"y":"Multiple Selection","o":["CL","SS","PAR","TAR","TWS","COR","UTI","OTH"]},{"i":2009,"n":"FeatureNam","a":"Feature Names","t":["Parent Tract"],"y":"Long Text"},{"i":2010,"n":"OwnerCount","a":"Owner Count","t":["Parent Tract"],"y":"Short Integer"},{"i":2011,"n":"TaxID","a":"Tax ID (PIDN)","t":["Parent Tract"],"y":"Short Text"},{"i":2012,"n":"TaxAddress","a":"Tax Card Mailing Address","t":["Parent Tract"],"y":"Long Text"},{"i":2013,"n":"TenantName","a":"Tenant Name","t":["Parent Tract"],"y":"Short Text"},{"i":2014,"n":"TenantCont","a":"Tenant Contact","t":["Parent Tract"],"y":"Short Text"},{"i":2015,"n":"LegacyID","a":"Legacy Tract ID","t":["Parent Tract"],"y":"Short Text"},{"i":2016,"n":"DsgnChgPen","a":"Design Change Pending","t":["Parent Tract"],"y":"List","o":["Y","N"]},{"i":2017,"n":"GenNote","a":"General Tract Notes","t":["Parent Tract"],"y":"Long Text"},{"i":3001,"n":"ParentID","a":"Parent ID","t":["Owner","Acquisition"],"y":"Short Text"},{"i":3002,"n":"OwnerID","a":"Owner ID","t":["Owner"],"y":"Short Text"},{"i":3003,"n":"OwnerType","a":"Owner Type","t":["Owner"],"y":"List","o":["Individual","Company","Government","NGO"]},{"i":3004,"n":"OwnerName","a":"Owner Name","t":["Owner"],"y":"Long Text"},{"i":3005,"n":"OwnerPct","a":"Ownership Percentage","t":["Owner"],"y":"Decimal Number"},{"i":3006,"n":"OnSite","a":"Lives On Site?","t":["Owner"],"y":"List","o":["Y","N"]},{"i":3007,"n":"OwnerAddr1","a":"Owner Address 1","t":["Owner"],"y":"Long Text"},{"i":3008,"n":"OwnerAddr2","a":"Owner Address 2","t":["Owner"],"y":"Long Text"},{"i":3009,"n":"OwnerPhone","a":"Owner Phone Number","t":["Owner"],"y":"Short Text"},{"i":3010,"n":"OwnerEmail","a":"Owner Email","t":["Owner"],"y":"Short Text"},{"i":3011,"n":"OwnerCon","a":"Owner Contact","t":["Owner"],"y":"Short Text"},{"i":3012,"n":"OwnerAtt","a":"Owner Attorney Name","t":["Owner","Legal"],"y":"Short Text"},{"i":3013,"n":"OwnAttCon","a":"Owner Attorney Contact","t":["Owner","Legal"],"y":"Long Text"},{"i":3014,"n":"W9Status","a":"W9 Status","t":["Owner","Cost"],"y":"List","o":["Pending","Requested","Obtained","Not Needed"]},{"i":4001,"n":"GeoID","a":"Geo ID","t":["Location"],"y":"Short Text"},{"i":4002,"n":"LandUse","a":"Land Use Type","t":["Location"],"y":"List","o":["Residential","Industrial","Farming","Ranching","Other"]},{"i":4003,"n":"State","a":"State","t":["Location"],"y":"Short Text"},{"i":4004,"n":"County","a":"County","t":["Location"],"y":"Short Text"},{"i":4005,"n":"Section","a":"Section","t":["Location"],"y":"Short Text"},{"i":4006,"n":"Block","a":"Block","t":["Location"],"y":"Short Text"},{"i":4007,"n":"AbstractNo","a":"Abstract Number","t":["Location"],"y":"Short Text"},{"i":4008,"n":"AbstractSv","a":"Abstract Survey","t":["Location"],"y":"Short Text"},{"i":4009,"n":"TownRang","a":"Township & Range","t":["Location"],"y":"Short Text"},{"i":4010,"n":"Legal","a":"Legal Description","t":["Location","Title"],"y":"Short Text"},{"i":4011,"n":"LegalAcres","a":"Legal Acres","t":["Location","Title"],"y":"Decimal Number"},{"i":4012,"n":"GISAcres","a":"GIS Acres","t":["Location"],"y":"Decimal Number"},{"i":4013,"n":"RouteID","a":"Route ID","t":["Location"],"y":"Short Text"},{"i":4014,"n":"RouteName","a":"Route Name","t":["Location"],"y":"Short Text"},{"i":4015,"n":"FromMP","a":"From MP","t":["Location"],"y":"Decimal Number"},{"i":4016,"n":"ToMP","a":"To MP","t":["Location"],"y":"Decimal Number"},{"i":4017,"n":"Miles","a":"Crossing Miles","t":["Location"],"y":"Decimal Number"},{"i":4018,"n":"Feet","a":"Crossing Feet","t":["Location"],"y":"Decimal Number"},{"i":4019,"n":"Rods","a":"Crossing Rods","t":["Location"],"y":"Decimal Number"},{"i":4020,"n":"SegName","a":"Segment Name","t":["Location"],"y":"Short Text"},{"i":4021,"n":"Spread","a":"Spread","t":["Location"],"y":"Short Text"},{"i":5001,"n":"TitleAgent","a":"Title Agent","t":["Title"],"y":"Short Text"},{"i":5002,"n":"VestDeed","a":"Vesting Deed","t":["Title"],"y":"Short Text"},{"i":5003,"n":"TitlStatus","a":"Title Status","t":["Title"],"y":"List","o":["Pending","Vesting In Progress","Vesting Complete","Full Title In Progress","Ready For Review","Full Title Complete","Full Title Not Needed"]},{"i":5004,"n":"TitlStatDt","a":"Title Status Change Date","t":["Title"],"y":"Date"},{"i":5005,"n":"TitlApprBy","a":"Title Approved By","t":["Title"],"y":"Short Text"},{"i":5006,"n":"TitlDetail","a":"Special Details Found in Title (Encroachment, Subordination, Lein)","t":["Title"],"y":"Long Text"},{"i":5007,"n":"TitleNotes","a":"Title Notes","t":["Title"],"y":"Long Text"},{"i":6001,"n":"SPAgent","a":"Survey Permission Agent","t":["Field Survey"],"y":"Short Text"},{"i":6002,"n":"SPStatus","a":"Survey Permission Status","t":["Field Survey"],"y":"List","o":["No Contact","Pending","Granted","Hard Denial","Denied","Expired","TRO Filed","TRO Received","Right to Enter","Not Needed"]},{"i":6003,"n":"SPMethod","a":"Survey Permission Method","t":["Field Survey"],"y":"List","o":["Verbal","Letter","Email","TRO","Other"]},{"i":6004,"n":"SPDate","a":"Survey Permission Date","t":["Field Survey"],"y":"Date"},{"i":6005,"n":"SPExpDate","a":"Survey Permission Expiration Date","t":["Field Survey"],"y":"Date"},{"i":6006,"n":"TROFileDt","a":"TRO File Date","t":["Field Survey"],"y":"Date"},{"i":6007,"n":"TRORecDt","a":"TRO Received Date","t":["Field Survey"],"y":"Date"},{"i":6008,"n":"SPStips","a":"Survey Permission Stipulations","t":["Field Survey"],"y":"Long Text"},{"i":6009,"n":"CivilReq","a":"Civil Survey Required","t":["Field Survey"],"y":"List","o":["Y","N"]},{"i":6010,"n":"CivilComDt","a":"Civil Survey Complete","t":["Field Survey"],"y":"Date"},{"i":6011,"n":"BndReq","a":"Boundary Survey Required","t":["Field Survey"],"y":"List","o":["Y","N"]},{"i":6012,"n":"BndComDt","a":"Boundary Survey Complete Date","t":["Field Survey"],"y":"Date"},{"i":6013,"n":"NRReq","a":"Natural Resource Survey Required","t":["Field Survey"],"y":"List","o":["Y","N"]},{"i":6014,"n":"NRComDt","a":"Natural Resource Complete Date","t":["Field Survey"],"y":"Date"},{"i":6015,"n":"CRReq","a":"Cultural Resource Survey Required","t":["Field Survey"],"y":"List","o":["Y","N"]},{"i":6016,"n":"CRComDt","a":"Cultural Resource Complete Date","t":["Field Survey"],"y":"Date"},{"i":6017,"n":"DeepDig","a":"Deep Dig Required","t":["Field Survey"],"y":"List","o":["Y","N"]},{"i":6018,"n":"DigCompDt","a":"Deep Dig Complete Date","t":["Field Survey"],"y":"Date"},{"i":6019,"n":"GeoReq","a":"Geotech Survey Required","t":["Field Survey"],"y":"List","o":["Y","N"]},{"i":6020,"n":"GeoComDt","a":"Geotech Survey Complete Date","t":["Field Survey"],"y":"Date"},{"i":6021,"n":"Asbuilt","a":"As-built Plat Required","t":["Field Survey"],"y":"List","o":["Y","N"]},{"i":6022,"n":"AsbStat","a":"As-built Plat Status","t":["Field Survey"],"y":"List","o":["Pending","In Progress","Review","Complete","Delivered"]},{"i":6023,"n":"AsbDate","a":"As-built Plat Date","t":["Field Survey"],"y":"Date"},{"i":7001,"n":"ApprSket","a":"Approved for Sketch","t":["Plat"],"y":"List","o":["Y","N"]},{"i":7002,"n":"SketchReq","a":"Sketch Required","t":["Plat"],"y":"List","o":["Y","N"]},{"i":7003,"n":"SketchRev","a":"Sketch Revision","t":["Plat"],"y":"Short Text"},{"i":7004,"n":"SketchDate","a":"Sketch Date","t":["Plat"],"y":"Date"},{"i":7005,"n":"ApprPlat","a":"Approved for Plat","t":["Plat"],"y":"List","o":["Y","N"]},{"i":7006,"n":"PlatReq","a":"Plat Required","t":["Plat"],"y":"List","o":["Y","N"]},{"i":7007,"n":"PlatPrior","a":"Plat Priority","t":["Plat"],"y":"Short Integer"},{"i":7008,"n":"PlatStat","a":"Plat Status","t":["Plat"],"y":"List","o":["Not Started","Assigned","Drafting","Review","Sent to ROW","Markup","Approved by ROW","Complete"]},{"i":7009,"n":"PlatRev","a":"Plat Revision","t":["Plat"],"y":"Short Text"},{"i":7010,"n":"PlatDate","a":"Plat Date","t":["Plat"],"y":"Date"},{"i":7011,"n":"PlatFeet","a":"Plat Feet","t":["Plat"],"y":"Decimal Number"},{"i":7012,"n":"PlatRods","a":"Plat Rods","t":["Plat"],"y":"Decimal Number"},{"i":7013,"n":"PlatSiteAc","a":"Plat Site Acres","t":["Plat"],"y":"Decimal Number"},{"i":7014,"n":"PlatNote","a":"Plat Notes","t":["Plat"],"y":"Long Text"},{"i":8001,"n":"AcqAsmt","a":"Acquisition Assignment","t":["Acquisition","Legal"],"y":"List","o":["External ROW","Internal ROW","External Legal","Internal Legal"]},{"i":8002,"n":"AsmtDate","a":"Assignment Date","t":["Acquisition","Legal"],"y":"Date"},{"i":8003,"n":"AcqAgent","a":"Acquisition Agent","t":["Acquisition"],"y":"Short Text"},{"i":8004,"n":"AcqPrior","a":"Acquisition Priority","t":["Acquisition"],"y":"Short Integer"},{"i":8005,"n":"AcqStat","a":"Acquisition Status","t":["Acquisition"],"y":"List","o":["Pending","Preliminary Offer","IOL Sent","IOL N/A","FOL Sent","Offer Accepted","Acquired","Petition Filed","Possession Granted","Petition Awarded","Final Judgement","Settled Post Construction","Recorded"]},{"i":8006,"n":"AprStat","a":"Appraisal Status","t":["Acquisition"],"y":"List","o":["Pending","Ordered","Review","Complete"]},{"i":8007,"n":"AprAmt","a":"Appraisal Amount","t":["Acquisition"],"y":"Decimal Number"},{"i":8008,"n":"IOLNeed","a":"IOL Needed","t":["Acquisition"],"y":"List","o":["Y","N"]},{"i":8009,"n":"IOLDate","a":"IOL Date","t":["Acquisition"],"y":"Date"},{"i":8010,"n":"IOLNote","a":"IOL Notes","t":["Acquisition"],"y":"Long Text"},{"i":8011,"n":"FOLNeed","a":"FOL Needed","t":["Acquisition"],"y":"List","o":["Y","N"]},{"i":8012,"n":"FOLDate","a":"FOL Date","t":["Acquisition"],"y":"Date"},{"i":8013,"n":"FOLNote","a":"FOL Notes","t":["Acquisition"],"y":"Long Text"},{"i":8014,"n":"OfferAcpDt","a":"Offer Accepted Date","t":["Acquisition"],"y":"Date"},{"i":8015,"n":"EsmtDate","a":"Easement Sign Date","t":["Acquisition"],"y":"Date"},{"i":8016,"n":"AgreeDate","a":"Agreement Effective Date","t":["Acquisition"],"y":"Date"},{"i":8017,"n":"AgreeType","a":"Agreement Type","t":["Acquisition"],"y":"List","o":["Standard","Non-standard"]},{"i":8018,"n":"AprConDt","a":"Approved for Construction Date","t":["Acquisition"],"y":"Date"},{"i":8019,"n":"AcqType","a":"Acquisition Type","t":["Acquisition"],"y":"List","o":["Easement","Sales Deed","Lease","Term","Temporary","Award","Other"]},{"i":8020,"n":"EsmtType","a":"Easement Type","t":["Acquisition"],"y":"List","o":["Non-exclusive","Exclusive"]},{"i":8021,"n":"AcqNote","a":"Acquisition Notes","t":["Acquisition"],"y":"Long Text"},{"i":8022,"n":"TermCycle","a":"Term Cycle","t":["Acquisition"],"y":"Short Text"},{"i":8023,"n":"TermStips","a":"Term Stipulations","t":["Acquisition"],"y":"Long Text"},{"i":8024,"n":"TermDueDt","a":"Term Payment Due Date (Next)","t":["Acquisition"],"y":"Date"},{"i":8025,"n":"TermNote","a":"Term Notes","t":["Acquisition"],"y":"Long Text"},{"i":8026,"n":"RecDate","a":"Recording Date","t":["Acquisition"],"y":"Date"},{"i":8027,"n":"RecInstrum","a":"Recording Instrument","t":["Acquisition"],"y":"Short Text"},{"i":8028,"n":"RecVolBkPg","a":"Recording Volume, Book, & Page","t":["Acquisition"],"y":"Long Text"},{"i":8029,"n":"AmdDate","a":"Amendment Recorded Date","t":["Acquisition"],"y":"Date"},{"i":9001,"n":"Attorney","a":"Attorney Name","t":["Legal"],"y":"Short Text"},{"i":9002,"n":"AttContact","a":"Attorney Contact","t":["Legal"],"y":"Short Text"},{"i":9003,"n":"AttFirm","a":"Attorney Firm","t":["Legal"],"y":"Short Text"},{"i":9004,"n":"LegalStat","a":"Legal Status","t":["Legal"],"y":"List","o":["Not Assigned","Assigned","Possession by Deposit","Agreement Reached","Case Closed","Case Non-suited","Petition Filed"]},{"i":9005,"n":"PetitPrior","a":"Petition Priority","t":["Legal"],"y":"Short Integer"},{"i":9006,"n":"PetitFile","a":"Petition Filed Date","t":["Legal"],"y":"Date"},{"i":9007,"n":"CaseNo","a":"Cause or Case Number","t":["Legal"],"y":"Short Text"},{"i":9008,"n":"Commission","a":"County Commissioner Name","t":["Legal"],"y":"Short Text"},{"i":9009,"n":"ApptDate","a":"Commissioner Appointment Date","t":["Legal"],"y":"Date"},{"i":9010,"n":"HearingDt","a":"Hearing Date","t":["Legal"],"y":"Date"},{"i":9011,"n":"HearingLoc","a":"Hearing Location","t":["Legal"],"y":"Short Text"},{"i":9012,"n":"TrialDate","a":"Trial Date","t":["Legal"],"y":"Date"},{"i":9013,"n":"JudgeDate","a":"Judgment Date","t":["Legal"],"y":"Date"},{"i":9014,"n":"AwardDate","a":"Award Date","t":["Legal"],"y":"Date"},{"i":9015,"n":"PosGrant","a":"Possession Granted Date","t":["Legal","Acquisition"],"y":"Date"},{"i":9016,"n":"DissDate","a":"Dismissal Date","t":["Legal"],"y":"Date"},{"i":9017,"n":"ObjFileDt","a":"Objection Filed Date","t":["Legal"],"y":"Date"},{"i":9018,"n":"BondRelDt","a":"Bond Release Date","t":["Legal"],"y":"Date"},{"i":9019,"n":"LegalNote","a":"Legal Notes","t":["Legal"],"y":"Long Text"},{"i":10001,"n":"Budget","a":"Budget Total Cost","t":["Cost"],"y":"Decimal Number"},{"i":10002,"n":"BudgetRd","a":"Budget Cost Per Rod","t":["Cost"],"y":"Decimal Number"},{"i":10003,"n":"IOLAmt","a":"IOL Amount","t":["Cost"],"y":"Decimal Number"},{"i":10004,"n":"IOLCostRd","a":"IOL Cost/Rod","t":["Cost"],"y":"Decimal Number"},{"i":10005,"n":"FOLAmt","a":"FOL Amount","t":["Cost"],"y":"Decimal Number"},{"i":10006,"n":"FOLCostRd","a":"FOL Cost/Rod","t":["Cost"],"y":"Decimal Number"},{"i":10007,"n":"CLTotCost","a":"Centerline Total Cost","t":["Cost"],"y":"Decimal Number"},{"i":10008,"n":"CLCostRd","a":"Centerline Cost Per Rod","t":["Cost"],"y":"Decimal Number"},{"i":10009,"n":"OtherCost","a":"Other Costs","t":["Cost"],"y":"Decimal Number"},{"i":10010,"n":"ActCost","a":"Actual Cost Total","t":["Cost"],"y":"Decimal Number"},{"i":10011,"n":"ActCostRd","a":"Actual Cost per Rod","t":["Cost"],"y":"Decimal Number"},{"i":10012,"n":"CostType","a":"Cost Type","t":["Cost"],"y":"List","o":["Acquisition","Fee","Bond","Damage","Award","Judgement","Other"]},{"i":10013,"n":"CostNote","a":"Cost Notes","t":["Cost"],"y":"Long Text"},{"i":10014,"n":"CheckID","a":"Check ID","t":["Cost"],"y":"Short Text"},{"i":10015,"n":"CheckAmt","a":"Check Amount","t":["Cost"],"y":"Decimal Number"},{"i":10016,"n":"CheckDate","a":"Check Date","t":["Cost"],"y":"Date"},{"i":10017,"n":"CostCode","a":"Cost Code","t":["Cost"],"y":"Short Text"},{"i":10018,"n":"AwdDepDt","a":"Award Deposit Date","t":["Cost"],"y":"Date"},{"i":10019,"n":"RefAmt","a":"Refund Amount","t":["Cost"],"y":"Decimal Number"},{"i":10020,"n":"RefDate","a":"Refund Date","t":["Cost"],"y":"Date"},{"i":10021,"n":"RefReason","a":"Refund Reason","t":["Cost"],"y":"Short Text"},{"i":11001,"n":"CrossType","a":"Crossing Type","t":["Crossings"],"y":"List","o":["Road","Highway","Railroad","Pipeline","Utility","River","Stream","Waterbody/ Wetland","Levee","Canal/ Ditch","Trail/ Greenway","Airport/ Air Strip","Other"]},{"i":11002,"n":"AuthType","a":"Authority Type","t":["Crossings"],"y":"List","o":["DOT","Railroad","Company LONO","Federal Government","State Government","Local Government","NGO","Special District","Tribal"]},{"i":11003,"n":"CrossAgent","a":"Crossing Agent","t":["Crossings"],"y":"Short Text"},{"i":11004,"n":"Agency","a":"Agency","t":["Crossings"],"y":"Short Text"},{"i":11005,"n":"AgenCon","a":"Agency Contact Name & Title","t":["Crossings"],"y":"Short Text"},{"i":11006,"n":"AgenAddr","a":"Agency Address","t":["Crossings"],"y":"Short Text"},{"i":11007,"n":"PmtReqd","a":"Permit Required","t":["Crossings"],"y":"List","o":["Y","N"]},{"i":11008,"n":"ProcTime","a":"Processing Time (Days)","t":["Crossings"],"y":"Short Integer"},{"i":11009,"n":"PermDur","a":"Permit Duration (Days)","t":["Crossings"],"y":"Short Integer"},{"i":11010,"n":"PlanSubmit","a":"Planned Date to Submit","t":["Crossings"],"y":"Date"},{"i":11011,"n":"AppDate","a":"Permit Application Submitted Date","t":["Crossings"],"y":"Date"},{"i":11012,"n":"BondReq","a":"Bond Requirements","t":["Crossings"],"y":"Short Text"},{"i":11013,"n":"COIReq","a":"Certificate of Insurance Requirement","t":["Crossings"],"y":"Short Text"},{"i":11014,"n":"EstPermCst","a":"Estimated Permit Cost","t":["Crossings"],"y":"Decimal Number"},{"i":11015,"n":"PmtReqmt","a":"Permit Requirements","t":["Crossings"],"y":"Long Text"},{"i":11016,"n":"ExhDwgReq","a":"Exhibit or Drawing Requirements","t":["Crossings"],"y":"Long Text"},{"i":11017,"n":"DwgBy","a":"Drawing Prepared By","t":["Crossings"],"y":"Short Text"},{"i":11018,"n":"DwgRecDt","a":"Drawing Received Date","t":["Crossings"],"y":"Date"},{"i":11019,"n":"CrossReq","a":"Crossing Requirements","t":["Crossings"],"y":"Long Text"},{"i":11020,"n":"PmtNotReq","a":"Permit Notice Requirements","t":["Crossings"],"y":"Long Text"},{"i":11021,"n":"Variance","a":"Permit Variance Accepted","t":["Crossings"],"y":"Long Text"},{"i":11022,"n":"PmtApprDt","a":"Permit Approval Date","t":["Crossings"],"y":"Date"},{"i":11023,"n":"PmtExpDt","a":"Permit Expiration Date","t":["Crossings"],"y":"Date"},{"i":11024,"n":"PmtNo","a":"Permit Number","t":["Crossings"],"y":"Short Text"},{"i":11025,"n":"PmtABReq","a":"Permit As-Built Required","t":["Crossings"],"y":"List","o":["Y","N"]},{"i":11026,"n":"PmtABRecDt","a":"Permit As-Built Received Date","t":["Crossings"],"y":"Date"},{"i":11027,"n":"PmtCloseDt","a":"Permit Close Date","t":["Crossings"],"y":"Date"},{"i":11028,"n":"CrossNote","a":"Crossing Notes","t":["Crossings"],"y":"Long Text"},{"i":12001,"n":"ConstAgent","a":"Construction ROW Agent","t":["Construction"],"y":"Short Text"},{"i":12002,"n":"GateCode","a":"Gate Code","t":["Construction"],"y":"Short Text"},{"i":12003,"n":"FenceStips","a":"Fencing Stipulations","t":["Construction"],"y":"Long Text"},{"i":12004,"n":"AgStips","a":"Agricultural Stipulations","t":["Construction"],"y":"Long Text"},{"i":12005,"n":"Notice","a":"Construction Notice Requirement","t":["Construction"],"y":"Long Text"},{"i":12006,"n":"AccessStip","a":"Access Stipulations","t":["Construction"],"y":"Long Text"},{"i":12007,"n":"Restrict","a":"Construction Restrictions","t":["Construction"],"y":"Long Text"},{"i":12008,"n":"ExcavStips","a":"Excavation Stipulations","t":["Construction"],"y":"Long Text"},{"i":12009,"n":"InstallReq","a":"Installation Requirements","t":["Construction"],"y":"Long Text"},{"i":12010,"n":"RestorStip","a":"Restoration Stipulations","t":["Construction"],"y":"Long Text"},{"i":12011,"n":"ConSpecSti","a":"Construction Special Stipulations","t":["Construction"],"y":"Long Text"},{"i":12012,"n":"StipsComp","a":"Stipulations Complete","t":["Construction","Operations"],"y":"List","o":["Y","N"]},{"i":13001,"n":"Abandon","a":"Abandonment Stipulations","t":["Operations"],"y":"Long Text"},{"i":13002,"n":"Assign","a":"Assignability Stipulations","t":["Operations"],"y":"Long Text"},{"i":13003,"n":"OpsAccess","a":"Operations Access Notice Requirement","t":["Operations"],"y":"Short Text"},{"i":13004,"n":"OpsSpecSti","a":"Operations Special Stipulations","t":["Operations"],"y":"Long Text"},{"i":14001,"n":"SysID","a":"System Generated ID","t":["System"],"y":"Short Text"},{"i":14002,"n":"CreateBy","a":"Created By","t":["System"],"y":"Short Text"},{"i":14003,"n":"CreateDate","a":"Created Date","t":["System"],"y":"Date"},{"i":14004,"n":"EditBy","a":"Edit By","t":["System"],"y":"Short Text"},{"i":14005,"n":"EditDate","a":"Edit Date","t":["System"],"y":"Date"}];
+
+/* ========================= APP CONFIG ========================= */
+const GRIDS = [
+  { key: "tract",  label: "Tract",            tabs: ["Parent Tract"] },
+  { key: "owner",  label: "Owner",            tabs: ["Owner"] },
+  { key: "loc",    label: "Location",         tabs: ["Location"] },
+  { key: "title",  label: "Title",            tabs: ["Title"] },
+  { key: "survey", label: "Field Survey",     tabs: ["Field Survey"] },
+  { key: "plat",   label: "Plat",             tabs: ["Plat"] },
+  { key: "acq",    label: "Acquisition",      tabs: ["Acquisition"] },
+  { key: "legal",  label: "Legal",            tabs: ["Legal"] },
+  { key: "cost",   label: "Cost",             tabs: ["Cost"] },
+  { key: "cross",  label: "Crossings",        tabs: ["Crossings"] },
+  { key: "constr", label: "Construction",     tabs: ["Construction"] },
+  { key: "ops",    label: "Operations",       tabs: ["Operations"] },
+];
+
+/* Project ID and Project Size sit on the tract, not the project header: one
+   project can run several segments at different diameters or widths. The
+   schema tags them to Parent Tract, so no override is applied here. */
+const PROJECT_FIELDS = ["Asset", "ProjectNam", "ProjType"];
+const SYSTEM_FIELDS  = ["SysID", "CreateBy", "CreateDate", "EditBy", "EditDate"];
+/* The strip is always the selected parent tract, whichever row was clicked. */
+const HEADER_FIELDS  = ["TractID", "TractName", "TractType", "County", "FromMP", "AcqStat"];
+const HEADER_WEIGHT  = { TractID: 1.1, TractName: 1.6, TractType: 0.8, County: 0.9, FromMP: 0.6, AcqStat: 1.2 };
+/* Shorter labels for the strip only. The schema alias still drives the grid
+   header and the export column name. */
+const HEADER_LABEL   = { AcqStat: "Acq. Status" };
+const LEAD_COLS      = ["Order", "TractID", "TractName", "TractType", "OwnerName"];
+/* alias -> field name, so an exported file (alias headers) re-imports cleanly */
+const ALIAS_TO_NAME  = Object.fromEntries(CORE_FIELDS.map((f) => [String(f.a).trim().toLowerCase(), f.n]));
+
+const TRACT_REQ = ["Order", "TractID", "TractName", "TractType", "State", "County"];
+const OWNER_REQ = ["ParentID", "OwnerID", "OwnerType", "OwnerName"];
+
+/* fields copied parent -> owner rows and re-synced on parent change */
+/* Location (3000-series) is recorded on the parent tract and copies down to
+   every owner row, so each exported line carries its own location. */
+const LOCATION_FIELDS = CORE_FIELDS.filter((f) => f.t.includes("Location")).map((f) => f.n);
+const COPY_DOWN = ["Online", "Order", "DsgnChgPen", "ProjectID", "ProjSize", ...LOCATION_FIELDS];
+
+/* parent currency fields that auto-sum from owner rows (override-able) */
+const PARENT_SUM = ["Budget", "IOLAmt", "FOLAmt", "CLTotCost", "OtherCost", "ActCost", "CheckAmt", "RefAmt", "AprAmt"];
+
+/* cost-per-rod = amount / Rods */
+const PER_ROD = { BudgetRd: "Budget", IOLCostRd: "IOLAmt", FOLCostRd: "FOLAmt", CLCostRd: "CLTotCost", ActCostRd: "ActCost" };
+
+/* Presentation only. Stored values stay numeric everywhere. */
+const MONEY = new Set([...PARENT_SUM, ...Object.keys(PER_ROD), "OtherCost", "EstPermCst"]);
+const PERCENT = new Set(["OwnerPct"]);
+
+/* A tract with a design change pending is drawn in red, across the tract row
+   and every owner row beneath it. */
+const FLAG_FIELD = "DsgnChgPen";
+const FLAG_RED = "#B3261E";
+const isFlagged = (r) => String(r[FLAG_FIELD] || "").trim().toUpperCase() === "Y";
+const CALC  = new Set([...Object.keys(PER_ROD), ...PARENT_SUM, "OwnerCount"]);
+
+/* Every Tract Type except Owner denotes a tract row. Read from the schema so
+   a new option in the file needs no code change. */
+const PARENT_TYPES = (CORE_FIELDS.find((f) => f.n === "TractType")?.o || []).filter((o) => o !== "Owner");
+const ROW_H = 32;
+const SAVE_REMINDER_MS = 10 * 60 * 1000;
+
+/* ========================= HELPERS ========================= */
+const uid = () => Math.random().toString(36).slice(2, 11);
+const pad10 = (n) => String(n).padStart(10, "0");
+const num = (v) => { if (v === "" || v === null || v === undefined) return null; const n = parseFloat(String(v).replace(/[$,]/g, "")); return isNaN(n) ? null : n; };
+const round = (n, d) => (n === null ? null : Math.round(n * 10 ** d) / 10 ** d);
+
+const isOwnerRow  = (r) => r.TractType === "Owner";
+/* Two different ideas, deliberately separate.
+
+   CROSSING_ONLY  - Permit and Encroachment. Restricted routing: Tract,
+                    Location, Crossings and Cost only, and no owner rows.
+   CARRIES_CROSSING - types that hold crossing data and so appear on the
+                    Crossings grid and get its form tab. Exclusive Easement is
+                    here as well: it is an ordinary parent tract in every other
+                    respect, with owners, title, acquisition and stipulations,
+                    but it is also something the line crosses. */
+const CROSSING_ONLY = new Set(["Permit", "Encroachment"]);
+const CARRIES_CROSSING = new Set(["Permit", "Encroachment", "Exclusive Easement"]);
+const isPermitRow = (r) => CROSSING_ONLY.has(r.TractType);
+const hasCrossing = (r) => CARRIES_CROSSING.has(r.TractType);
+
+const fmtMoney = (v) => {
+  const n = num(v);
+  if (n === null) return v ?? "";
+  return n.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+const fmtPct = (v) => {
+  const n = num(v);
+  if (n === null) return v ?? "";
+  return `${n.toLocaleString("en-US", { maximumFractionDigits: 4 })}%`;
+};
+const fmtDateUS = (v) => {
+  if (!v) return "";
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(v));
+  return m ? `${m[2]}/${m[3]}/${m[1]}` : String(v);
+};
+const toISODate = (v) => {
+  if (v === "" || v === null || v === undefined) return "";
+  if (typeof v === "number") { const d = new Date(Date.UTC(1899, 11, 30 + v)); return d.toISOString().slice(0, 10); }
+  const s = String(v).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(s);
+  if (m) return `${m[3]}-${String(m[1]).padStart(2, "0")}-${String(m[2]).padStart(2, "0")}`;
+  const d = new Date(s);
+  return isNaN(d) ? s : d.toISOString().slice(0, 10);
+};
+
+const isNumericType = (y) => y === "Decimal Number" || y === "Short Integer" || y === "Long Integer";
+
+const displayValue = (f, v) => {
+  if (v === null || v === undefined || v === "") return "";
+  if (MONEY.has(f.n)) return fmtMoney(v);
+  if (PERCENT.has(f.n)) return fmtPct(v);
+  if (f.y === "Date") return fmtDateUS(v);
+  return String(v);
+};
+
+/* ========================= INLINE LAYOUT TOKENS ========================= */
+/* Structure and chrome colour live here rather than in the stylesheet so the
+   shell renders identically wherever the component is embedded. */
+const SHELL = { position: "fixed", inset: 0, display: "flex", flexDirection: "column", overflow: "hidden" };
+const BAR_TOP = { flex: "0 0 56px", height: 56, display: "flex", alignItems: "center", gap: 20, padding: "0 16px", background: "#12325C", color: "#F2F5F9" };
+const BAR_NAV = { flex: "0 0 40px", height: 40, display: "flex", alignItems: "center", gap: 2, padding: "0 12px", background: "#1B4477", overflowX: "auto", overflowY: "hidden" };
+const BAR_TOOL = { flex: "0 0 auto", display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderBottom: "1px solid #D4DBE4" };
+const STAGE = { flex: "1 1 auto", minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" };
+
+const TB_STRIP = { flex: "0 0 44px", height: 44, display: "flex", flexDirection: "row", flexWrap: "nowrap", alignItems: "stretch", width: "100%", background: "#FFFFFF", borderTop: "2px solid #12325C", borderBottom: "1px solid #D4DBE4", overflow: "hidden" };
+const TB_CELL = { display: "flex", flexDirection: "row", alignItems: "baseline", gap: 7, flex: "1 1 0%", minWidth: 0, padding: "0 12px", height: 44, lineHeight: "44px", borderRight: "1px solid #E7ECF2", whiteSpace: "nowrap", overflow: "hidden" };
+const TB_LABEL = { flex: "0 0 auto", fontSize: 9.5, letterSpacing: ".11em", textTransform: "uppercase", color: "#6B7B8D", fontWeight: 600 };
+const TB_VALUE = { flex: "1 1 auto", minWidth: 0, fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis" };
+
+const stepBtn = (disabled) => ({
+  display: "flex", alignItems: "center", justifyContent: "center",
+  width: 24, height: 24, flex: "0 0 auto", borderRadius: 3, padding: 0,
+  font: "inherit", fontSize: 15, lineHeight: 1,
+  background: disabled ? "#F1F4F8" : "#FFFFFF",
+  border: `1px solid ${disabled ? "#E1E6EC" : "#D4DBE4"}`,
+  color: disabled ? "#B7C3D0" : "#17579A",
+  cursor: disabled ? "not-allowed" : "pointer",
+});
+
+const NAV_CAP = { fontSize: 9, letterSpacing: ".12em", textTransform: "uppercase", color: "#B9D4EE", marginRight: 8, flex: "0 0 auto", fontWeight: 600 };
+const navBtnStyle = (on, disabled) => ({
+  background: on ? "#FFFFFF" : "transparent",
+  color: disabled ? "#8FAAC6" : on ? "#12325C" : "#FFFFFF",
+  border: "none", borderRadius: 3, padding: "6px 11px",
+  fontSize: 13, fontWeight: on ? 700 : 500,
+  whiteSpace: "nowrap", flex: "0 0 auto",
+  cursor: disabled ? "not-allowed" : "pointer",
+});
+
+
+/* ========================= DERIVE ENGINE ========================= */
+/* Recomputes copy-down, owner counts, parent sums, and cost-per-rod.
+   A cell the user has typed into is in `ov` and is left alone. */
+const ovKey = (id, n) => `${id}::${n}`;
+
+function derive(rows, ov) {
+  const out = rows.map((r) => ({ ...r }));
+  const parents = out.filter((r) => !isOwnerRow(r));
+  const byTractId = new Map();
+  parents.forEach((p) => { if (p.TractID) byTractId.set(String(p.TractID), p); });
+
+  const kids = new Map();
+  out.forEach((r) => {
+    if (!isOwnerRow(r)) return;
+    const k = String(r.ParentID || "");
+    if (!kids.has(k)) kids.set(k, []);
+    kids.get(k).push(r);
+  });
+
+  parents.forEach((p) => {
+    const owners = kids.get(String(p.TractID)) || [];
+
+    // copy down tract-level facts
+    owners.forEach((o) => { COPY_DOWN.forEach((n) => { o[n] = p[n] ?? ""; }); });
+
+    // owner count is the row count, full stop — it is how the app tells a
+    // single-owner tract from a multi-owner one, so it cannot be overridden
+    p.OwnerCount = isPermitRow(p) ? "" : owners.length;
+
+    // parent currency roll-up
+    if (owners.length) {
+      PARENT_SUM.forEach((n) => {
+        if (ov.has(ovKey(p._id, n))) return;
+        let any = false, sum = 0;
+        owners.forEach((o) => { const v = num(o[n]); if (v !== null) { any = true; sum += v; } });
+        if (any) p[n] = round(sum, 2);
+      });
+    }
+  });
+
+  // cost per rod, every row
+  out.forEach((r) => {
+    const rods = num(r.Rods);
+    Object.entries(PER_ROD).forEach(([per, amt]) => {
+      if (ov.has(ovKey(r._id, per))) return;
+      const a = num(r[amt]);
+      r[per] = a !== null && rods ? round(a / rods, 2) : "";
+    });
+  });
+
+  // Re-seat every owner row beneath its parent. Without this, reassigning a
+  // ParentID leaves the row sitting next to the tract it used to belong to.
+  const ordVal = (r) => { const n = num(r.Order); return n === null ? Infinity : n; };   // blanks last
+  const byId = (a, b) => String(a.TractID ?? "").localeCompare(String(b.TractID ?? ""), undefined, { numeric: true });
+  /* Order is user-set and need not be unique, so SysID breaks the tie and
+     carries the blanks. It is sequential, so this is creation order. */
+  const bySys = (a, b) => String(a.SysID ?? "").localeCompare(String(b.SysID ?? ""));
+
+  const ordered = [];
+  const placed = new Set();
+  [...parents].sort((a, b) => (ordVal(a) - ordVal(b)) || bySys(a, b)).forEach((p) => {
+    ordered.push(p);
+    placed.add(p._id);
+    [...(kids.get(String(p.TractID)) || [])].sort(byId).forEach((o) => { ordered.push(o); placed.add(o._id); });
+  });
+  out.forEach((r) => { if (!placed.has(r._id)) ordered.push(r); });   // owners with no parent
+  return ordered;
+}
+
+/* Feet / Rods / Miles are conversions of one another; editing any one
+   rewrites the other two on that row. */
+function applyLengthConversion(row, field, value) {
+  const v = num(value);
+  if (v === null) return;
+  if (field === "Feet")  { row.Rods = round(v / 16.5, 2);  row.Miles = round(v / 5280, 4); }
+  if (field === "Rods")  { row.Feet = round(v * 16.5, 2);  row.Miles = round((v * 16.5) / 5280, 4); }
+  if (field === "Miles") { row.Feet = round(v * 5280, 2);  row.Rods = round((v * 5280) / 16.5, 2); }
+}
+
+/* ========================= ROW VISIBILITY PER GRID ========================= */
+function gridRows(key, rows) {
+  switch (key) {
+    // Tract and Cost show every row. Crossing rows (Permit, Encroachment) are
+    // limited to Tract, Location, Crossings and Cost.
+    case "tract":  return rows;
+    case "cost":   return rows;
+    case "cross":  return rows.filter((r) => !isOwnerRow(r) && hasCrossing(r));
+    // Location is a tract-level record, and a crossing has a location like any
+    // other tract, so every non-owner row appears here.
+    case "loc":    return rows.filter((r) => !isOwnerRow(r));
+    case "owner":
+    case "title":
+    case "acq":
+    case "legal":  return rows.filter((r) => !isPermitRow(r));
+    // Field Survey, Plat, Construction, Operations are parent-tract records.
+    default:       return rows.filter((r) => !isOwnerRow(r) && !isPermitRow(r));
+  }
+}
+
+/* Probe gridRows rather than maintaining a parallel list, so the row-type
+   filter always agrees with what a grid actually shows. */
+const KIND_PROBE = [
+  { _id: "p", TractID: "p", TractType: "Parent" },
+  { _id: "e", TractID: "e", TractType: "Exclusive Easement" },   // parent kind, but crosses
+  { _id: "o", TractID: "o", TractType: "Owner", ParentID: "p" },
+  { _id: "m", TractID: "m", TractType: "Permit" },
+  { _id: "n", TractID: "n", TractType: "Encroachment" },
+];
+const rowKind = (r) => (isOwnerRow(r) ? "owner" : isPermitRow(r) ? "permit" : "parent");
+function gridKinds(key) {
+  const r = gridRows(key, KIND_PROBE).map((x) => x._id);
+  return {
+    parent: r.includes("p") || r.includes("e"),
+    owner: r.includes("o"),
+    permit: r.includes("m") || r.includes("n"),
+  };
+}
+
+
+/* ========================= APP ========================= */
+function ROWLineListPro() {
+  const [customFields, setCustomFields] = useState([]);
+  const [rows, setRows] = useState([]);
+  const [ov, setOv] = useState(() => new Set());
+  const [project, setProject] = useState(() => Object.fromEntries(PROJECT_FIELDS.map((n) => [n, ""])));
+  const [sysSeq, setSysSeq] = useState(1);
+  const [currentUser, setCurrentUser] = useState("");
+
+  const [view, setView] = useState({ type: "grid", key: "tract" });
+  const [selected, setSelected] = useState(null);       // parent TractID
+  const [focusTick, setFocusTick] = useState(0);        // bumped to scroll the stepped-to row into view
+  const [formSide, setFormSide] = useState("parent");   // "parent" | ownerRowId
+  const [formTab, setFormTab] = useState("Parent Tract");
+
+  const [search, setSearch] = useState("");
+  const [filters, setFilters] = useState({});
+  const [showFilters, setShowFilters] = useState(false);
+  const [onlineOnly, setOnlineOnly] = useState(true);   // offline tracts hidden until switched off
+  const [rowKinds, setRowKinds] = useState({ parent: true, owner: true, permit: true });
+  const [hidden, setHidden] = useState({});             // {gridKey: Set(fieldName)}
+  const [sort, setSort] = useState({ col: null, dir: 1 });
+  const [modal, setModal] = useState(null);
+  const [toast, setToast] = useState(null);
+  const [dirty, setDirty] = useState(false);
+
+  const fileRef = useRef(null);
+  const toastTimer = useRef(null);
+
+  const allFields = useMemo(() => [...CORE_FIELDS, ...customFields], [customFields]);
+  const fieldByName = useMemo(() => Object.fromEntries(allFields.map((f) => [f.n, f])), [allFields]);
+
+  const notify = useCallback((msg) => {
+    setToast(msg);
+    clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(null), 5000);
+  }, []);
+
+  /* -------- unsaved-work guards -------- */
+  useEffect(() => {
+    const h = (e) => { if (rows.length) { e.preventDefault(); e.returnValue = ""; } };
+    window.addEventListener("beforeunload", h);
+    return () => window.removeEventListener("beforeunload", h);
+  }, [rows.length]);
+
+  useEffect(() => {
+    const t = setInterval(() => {
+      if (rows.length && dirty) { setModal({ type: "remind" }); setDirty(false); }
+    }, SAVE_REMINDER_MS);
+    return () => clearInterval(t);
+  }, [rows.length, dirty]);
+
+  /* -------- derived collections -------- */
+  const parentRows = useMemo(() => rows.filter((r) => !isOwnerRow(r)), [rows]);
+  const parentIds = useMemo(() => parentRows.map((r) => String(r.TractID)).filter(Boolean), [parentRows]);
+  const selectedParent = useMemo(() => parentRows.find((r) => String(r.TractID) === String(selected)) || null, [parentRows, selected]);
+  const selectedOwners = useMemo(
+    () => rows.filter((r) => isOwnerRow(r) && String(r.ParentID) === String(selected)),
+    [rows, selected]
+  );
+
+  const commit = useCallback((next, nextOv) => {
+    const o = nextOv || ov;
+    setRows(derive(next, o));
+    setDirty(true);
+  }, [ov]);
+
+  /* -------- who touched it, and when -------- */
+  const today = () => new Date().toISOString().slice(0, 10);
+  const stampEdit = useCallback((r) => {
+    const out = { ...r, EditDate: today() };
+    if (currentUser.trim()) out.EditBy = currentUser.trim();
+    return out;
+  }, [currentUser]);
+
+  /* Moving an owner to a different tract. Any ID still on the default
+     "<parent>.001" pattern follows the move; a hand-typed ID is left alone. */
+  const reparent = (copy, before, prev, rowId, newPid) => {
+    const oldPid = String(before.ParentID || "");
+    if (!oldPid || !newPid || oldPid === newPid) return;
+    const esc = (x) => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const oldPat = new RegExp("^" + esc(oldPid) + "\\.\\d+$");
+    const newPat = new RegExp("^" + esc(String(newPid)) + "\\.(\\d+)$");
+    let hi = 0;
+    prev.forEach((x) => {
+      if (x._id === rowId) return;
+      [x.TractID, x.OwnerID].forEach((idv) => {
+        const m = newPat.exec(String(idv || ""));
+        if (m) hi = Math.max(hi, parseInt(m[1], 10));
+      });
+    });
+    const nextId = `${newPid}.${String(hi + 1).padStart(3, "0")}`;
+    if (oldPat.test(String(before.TractID || ""))) copy.TractID = nextId;
+    if (oldPat.test(String(before.OwnerID || ""))) copy.OwnerID = nextId;
+  };
+
+  /* -------- cell edit -------- */
+  const setCell = useCallback((rowId, field, value) => {
+    const nextOv = new Set(ov);
+    if (CALC.has(field)) {
+      if (value === "" ) nextOv.delete(ovKey(rowId, field));
+      else nextOv.add(ovKey(rowId, field));
+    }
+    setOv(nextOv);
+
+    setRows((prev) => {
+      const next = prev.map((r) => {
+        if (r._id !== rowId) return r;
+        const copy = stampEdit({ ...r, [field]: value });
+        if (field === "Feet" || field === "Rods" || field === "Miles") applyLengthConversion(copy, field, value);
+        if (field === "ParentID" && isOwnerRow(r)) reparent(copy, r, prev, rowId, String(value || ""));
+        return copy;
+      });
+      return derive(next, nextOv);
+    });
+    setDirty(true);
+  }, [ov, stampEdit]);
+
+  /* -------- add tract --------
+     ownerVals present means a single-owner tract: the tract row and its one
+     ownership interest are written together, so the hierarchy stays uniform
+     while the user only fills one form. */
+  const addTract = (vals, owners, single) => {
+    const wanted = String(vals.TractID);
+    if (rows.some((r) => String(r.TractID) === wanted || String(r.OwnerID) === wanted)) {
+      notify(`Tract ID ${wanted} already exists on this line list. Use a different ID.`); return;
+    }
+    const d = today();
+    const stamp = (r) => {
+      r.CreateDate = d; r.EditDate = d;
+      r.CreateBy = currentUser.trim(); r.EditBy = currentUser.trim();
+    };
+
+    const t = { _id: uid() };
+    allFields.forEach((f) => (t[f.n] = ""));
+    Object.assign(t, project, vals);
+    if (!t.Online) t.Online = "Y";
+    t.SysID = pad10(sysSeq);
+    stamp(t);
+
+    const next = [...rows, t];
+    const list = (owners || []).filter((x) => String(x.OwnerName || "").trim());
+
+    list.forEach((src, i) => {
+      const o = { _id: uid() };
+      allFields.forEach((f) => (o[f.n] = ""));
+      Object.assign(o, project);
+      COPY_DOWN.forEach((n) => (o[n] = t[n] ?? ""));
+      const oid = `${vals.TractID}.${String(i + 1).padStart(3, "0")}`;
+      o.TractType = "Owner";
+      o.TractName = "";
+      o.ParentID = String(vals.TractID);
+      o.TractID = oid;
+      o.OwnerID = oid;
+      o.OwnerType = src.OwnerType || "Individual";
+      o.OwnerName = String(src.OwnerName).trim();
+      o.OwnerPct = String(src.OwnerPct || "").trim();
+      if (single && !o.OwnerPct) o.OwnerPct = 100;    // one interest is the whole
+      o.SysID = pad10(sysSeq + 1 + i);
+      stamp(o);
+      next.push(o);
+    });
+
+    setSysSeq((s) => s + 1 + list.length);
+    commit(next);
+    setSelected(String(vals.TractID));
+    setModal(null);
+    notify(list.length
+      ? `Tract ${vals.TractID} added with ${list.length} owner${list.length > 1 ? "s" : ""}.`
+      : `Tract ${vals.TractID} added. Use Add owner to record ownership interests.`);
+  };
+
+  /* -------- add owner -------- */
+  /* Highest existing suffix plus one, not sibling count plus one: after .001
+     is deleted, count-based numbering would reissue .002 and collide. */
+  const nextOwnerId = (parentTractId) => {
+    let hi = 0;
+    const pat = new RegExp("^" + String(parentTractId).replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\.(\\d+)$");
+    rows.forEach((r) => {
+      [r.TractID, r.OwnerID].forEach((idv) => {
+        const m = pat.exec(String(idv || ""));
+        if (m) hi = Math.max(hi, parseInt(m[1], 10));
+      });
+    });
+    return `${parentTractId}.${String(hi + 1).padStart(3, "0")}`;
+  };
+
+  const addOwner = (vals) => {
+    const parent = parentRows.find((r) => String(r.TractID) === String(vals.ParentID));
+    if (!parent) { notify("Pick an existing parent tract first."); return; }
+    const wanted = String(vals.OwnerID || vals.TractID);
+    if (rows.some((r) => String(r.TractID) === wanted || String(r.OwnerID) === wanted)) {
+      notify(`ID ${wanted} is already on this line list. Use a different Owner Tract ID.`); return;
+    }
+    const d = today();
+    const r = { _id: uid() };
+    allFields.forEach((f) => (r[f.n] = ""));
+    Object.assign(r, project);
+    COPY_DOWN.forEach((n) => (r[n] = parent[n] ?? ""));
+    Object.assign(r, vals);
+    r.TractType = "Owner";
+    r.TractName = "";
+    r.SysID = pad10(sysSeq);
+    r.CreateDate = d; r.EditDate = d;
+    r.CreateBy = currentUser.trim(); r.EditBy = currentUser.trim();
+    setSysSeq((s) => s + 1);
+    commit([...rows, r]);
+    setSelected(String(parent.TractID));
+    setModal(null);
+    notify(`Owner ${vals.OwnerName} added to ${parent.TractID}.`);
+  };
+
+  /* -------- delete -------- */
+  const deleteRow = (row) => {
+    if (isOwnerRow(row)) {
+      commit(rows.filter((r) => r._id !== row._id));
+      notify("Owner row deleted.");
+    } else {
+      const doomed = new Set([row._id, ...rows.filter((r) => isOwnerRow(r) && String(r.ParentID) === String(row.TractID)).map((r) => r._id)]);
+      const left = rows.filter((r) => !doomed.has(r._id));
+      commit(left);
+      if (String(selected) === String(row.TractID)) {
+        // Move to the next surviving tract rather than clearing the selection,
+        // which would leave the form view with nothing to show.
+        const next = left.find((r) => !isOwnerRow(r) && r.TractID);
+        setSelected(next ? String(next.TractID) : null);
+        if (!next) setView({ type: "grid", key: "tract" });
+      }
+      notify(`Tract ${row.TractID} and ${doomed.size - 1} owner row(s) deleted.`);
+    }
+    setModal(null);
+  };
+
+  /* -------- project header edits write through to every row -------- */
+  const setProjectField = (n, v) => {
+    setProject((p) => ({ ...p, [n]: v }));
+    setRows((prev) => prev.map((r) => stampEdit({ ...r, [n]: v })));
+    setDirty(true);
+  };
+
+  /* -------- bulk owner-name update -------- */
+  const ownerGroups = useMemo(() => {
+    const m = new Map();
+    rows.filter(isOwnerRow).forEach((r) => {
+      const k = String(r.OwnerName || "").trim();
+      if (!k) return;
+      if (!m.has(k)) m.set(k, []);
+      m.get(k).push(r);
+    });
+    return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  }, [rows]);
+
+  /* Attributes of the person, not of their interest in a particular tract, so
+     they update across every row carrying that owner's name. Ownership
+     percentage is deliberately absent: it differs tract by tract. */
+  const OWNER_BULK = ["OwnerName", "OwnerType", "OwnerCon", "OwnerAddr1", "OwnerAddr2",
+                      "OwnerPhone", "OwnerEmail", "W9Status", "OwnerAtt", "OwnAttCon", "OnSite"];
+
+  const bulkUpdateOwner = (name, patch) => {
+    setRows((prev) => derive(prev.map((r) => (isOwnerRow(r) && String(r.OwnerName || "").trim() === name ? stampEdit({ ...r, ...patch }) : r)), ov));
+    setDirty(true);
+    notify(`Updated every row for ${patch.OwnerName || name}.`);
+  };
+
+
+  /* -------- columns for the active grid -------- */
+  const activeGrid = view.type === "grid" ? GRIDS.find((g) => g.key === view.key) : null;
+
+  const gridColumns = useCallback((g) => {
+    const seen = new Set();
+    const cols = [];
+    const push = (n) => { const f = fieldByName[n]; if (f && !seen.has(n)) { seen.add(n); cols.push(f); } };
+    LEAD_COLS.forEach(push);
+    allFields.forEach((f) => { if (f.t.some((t) => g.tabs.includes(t))) push(f.n); });
+    return cols;
+  }, [allFields, fieldByName]);
+
+  const allCols = activeGrid ? gridColumns(activeGrid) : [];
+  const hiddenSet = activeGrid ? (hidden[activeGrid.key] || new Set()) : new Set();
+  const cols = allCols.filter((f) => !hiddenSet.has(f.n));
+
+  const baseRows = activeGrid ? gridRows(activeGrid.key, rows) : [];
+  /* Which boxes are live on this grid, and a guard so the last live one
+     cannot be unchecked and leave an empty screen. */
+  const kindsHere = useMemo(() => (activeGrid ? gridKinds(activeGrid.key)
+    : { parent: true, owner: true, permit: true }), [activeGrid]);
+  const liveKinds = ["parent", "owner", "permit"].filter((k) => kindsHere[k]);
+  const toggleKind = useCallback((k) => {
+    setRowKinds((prev) => {
+      const on = liveKinds.filter((x) => prev[x]);
+      if (prev[k] && on.length <= 1) return prev;        // last one stays checked
+      return { ...prev, [k]: !prev[k] };
+    });
+  }, [liveKinds.join(",")]);
+
+  const visibleRows = useMemo(() => {
+    let out = baseRows;
+    if (onlineOnly) out = out.filter((r) => String(r.Online || "").trim().toUpperCase() === "Y");
+    out = out.filter((r) => rowKinds[rowKind(r)] !== false);
+    const q = search.trim().toLowerCase();
+    if (q) out = out.filter((r) => Object.entries(r).some(([k, v]) => k !== "_id" && String(v ?? "").toLowerCase().includes(q)));
+    Object.entries(filters).forEach(([n, val]) => {
+      if (!val) return;
+      const t = String(val).toLowerCase();
+      out = out.filter((r) => String(r[n] ?? "").toLowerCase().includes(t));
+    });
+    if (sort.col) {
+      const f = fieldByName[sort.col];
+      out = [...out].sort((a, b) => {
+        const av = a[sort.col], bv = b[sort.col];
+        if (f && isNumericType(f.y)) return ((num(av) ?? -Infinity) - (num(bv) ?? -Infinity)) * sort.dir;
+        return String(av ?? "").localeCompare(String(bv ?? ""), undefined, { numeric: true }) * sort.dir;
+      });
+    }
+    return out;
+  }, [baseRows, onlineOnly, rowKinds, search, filters, sort, fieldByName]);
+
+  /* Permits and encroachments never take owner rows. */
+  const ownerEligible = useMemo(
+    () => parentRows.filter((r) => !isPermitRow(r) && r.TractID), [parentRows]);
+
+  const selectFromRow = (r) => setSelected(isOwnerRow(r) ? String(r.ParentID) : String(r.TractID));
+
+  /* Tracts reachable by the stepper, in the order they appear on screen, so it
+     never jumps to something a filter is hiding. Owner rows resolve to their
+     parent, which keeps the stepper working in an owner-only view. */
+  const cycleTracts = useMemo(() => {
+    /* Outside grid view there are no visible rows to walk, so fall back to
+       every tract in row order, still honouring the online filter. */
+    const source = activeGrid
+      ? visibleRows
+      : rows.filter((r) => !onlineOnly || String(r.Online || "").trim().toUpperCase() === "Y");
+
+    const seen = new Set();
+    const out = [];
+    source.forEach((r) => {
+      const pid = String(isOwnerRow(r) ? r.ParentID : r.TractID);
+      if (!pid || seen.has(pid)) return;
+      seen.add(pid);
+      out.push(pid);
+    });
+    return out;
+  }, [activeGrid, visibleRows, rows, onlineOnly]);
+
+  const cycleIdx = cycleTracts.indexOf(String(selected));
+  const step = useCallback((dir) => {
+    if (!cycleTracts.length) return;
+    const i = cycleTracts.indexOf(String(selected));
+    const next = i === -1 ? (dir > 0 ? 0 : cycleTracts.length - 1)
+                          : (i + dir + cycleTracts.length) % cycleTracts.length;
+    setSelected(cycleTracts[next]);
+    setFocusTick((t) => t + 1);
+  }, [cycleTracts, selected]);
+
+  /* ========================= EXPORT ========================= */
+  /* Suggested name, offered in the download dialog so it can be changed. */
+  const suggestedFileName = () => {
+    const tag = (project.ProjectNam || project.ProjectID || "Project").replace(/[^A-Za-z0-9]+/g, "_").slice(0, 40);
+    return `ROW_LineList_${tag}_${new Date().toISOString().slice(0, 10)}`;
+  };
+
+  const askDownload = () => {
+    if (!rows.length) { notify("Nothing to download yet. Add a tract or import a line list."); return; }
+    setModal({ type: "download", name: suggestedFileName() });
+  };
+
+  const exportXlsx = (fileName) => {
+    if (!rows.length) { notify("Nothing to download yet. Add a tract or import a line list."); return; }
+    /* Column order matches the schema file row for row, with any custom fields
+       appended after the core set. */
+    const order = allFields;
+
+    /* Headers are the aliases. Import reads them back through the Fields sheet,
+       which carries the alias alongside the ten-character field name. */
+    const header = order.map((f) => f.a);
+    const data = rows.map((r) => {
+      const o = {};
+      order.forEach((f) => {
+        let v = r[f.n] ?? "";
+        if (f.y === "Date" && v) v = fmtDateUS(v);
+        else if (isNumericType(f.y) && v !== "") { const n = num(v); v = n === null ? v : n; }
+        o[f.a] = v;
+      });
+      return o;
+    });
+
+    const wb = XLSX.utils.book_new();
+    const ws1 = XLSX.utils.json_to_sheet(data, { header });
+    ws1["!cols"] = order.map((f) => ({ wch: Math.max(12, Math.min(34, f.a.length + 2)) }));
+    XLSX.utils.book_append_sheet(wb, ws1, "Line List");
+
+    const fieldRows = order.map((f) => {
+      const row = { "Field ID": f.i, "Field Name": f.n, "Alias": f.a, "View Tabs": f.t.join(", "), "Field Type": f.y };
+      (f.o || []).forEach((opt, i) => (row[`Attribute ${i + 1}`] = opt));
+      return row;
+    });
+    const ws2 = XLSX.utils.json_to_sheet(fieldRows);
+    XLSX.utils.book_append_sheet(wb, ws2, "Fields");
+
+    const safe = String(fileName || suggestedFileName())
+      .replace(/\.xlsx$/i, "")
+      .replace(/[\\/:*?"<>|]+/g, "-")     // characters no file system will take
+      .trim()
+      .slice(0, 120) || suggestedFileName();
+    XLSX.writeFile(wb, `${safe}.xlsx`);
+    setDirty(false);
+    setModal(null);
+    notify(`Downloaded ${safe}.xlsx — this is the only copy, the app stores nothing.`);
+  };
+
+  /* ========================= IMPORT ========================= */
+  const doImport = (file) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const wb = XLSX.read(new Uint8Array(e.target.result), { type: "array", cellDates: false });
+        const added = [];
+        const known = new Set(allFields.map((f) => f.n));
+
+        // read a Fields sheet if the file carries one
+        const fsheet = wb.Sheets["Fields"];
+        if (fsheet) {
+          let nextId = 90000 + customFields.length;
+          XLSX.utils.sheet_to_json(fsheet, { defval: "" }).forEach((rec) => {
+            const n = String(rec["Field Name"] || "").trim();
+            if (!n || known.has(n)) return;
+            const opts = Object.keys(rec).filter((k) => /^Attribute /.test(k)).map((k) => String(rec[k]).trim()).filter(Boolean);
+            const f = {
+              i: ++nextId,
+              n,
+              a: String(rec["Alias"] || n).trim(),
+              t: String(rec["View Tabs"] || "Parent Tract").split(",").map((x) => x.trim()).filter(Boolean),
+              y: String(rec["Field Type"] || "Short Text").trim(),
+              custom: true,
+            };
+            if (opts.length) f.o = opts;
+            known.add(n);
+            added.push(f);
+          });
+        }
+
+        const all = [...allFields, ...added];
+        const nameSet = new Set(all.map((f) => f.n));
+        const typeByName = Object.fromEntries(all.map((f) => [f.n, f.y]));
+
+        /* Column headers may be ten-character field names or aliases. Aliases in
+           the file's own Fields sheet win, so a renamed alias still round-trips. */
+        const aliasMap = { ...ALIAS_TO_NAME };
+        all.forEach((f) => { aliasMap[String(f.a).trim().toLowerCase()] = f.n; });
+        if (fsheet) {
+          XLSX.utils.sheet_to_json(fsheet, { defval: "" }).forEach((rec) => {
+            const fn = String(rec["Field Name"] || "").trim();
+            const al = String(rec["Alias"] || "").trim();
+            if (fn && al && nameSet.has(fn)) aliasMap[al.toLowerCase()] = fn;
+          });
+        }
+        const resolve = (h) => {
+          const k = String(h).trim();
+          if (nameSet.has(k)) return k;
+          return aliasMap[k.toLowerCase()] || null;
+        };
+
+        const sheet = wb.Sheets["Line List"] || wb.Sheets[wb.SheetNames[0]];
+        if (!sheet) throw new Error("no sheet");
+        const raw = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+        if (!raw.length) throw new Error("empty");
+
+        const rejected = new Set();
+        const proj = {};
+        const problems = [];
+        let seq = 0;
+        const fldByName = Object.fromEntries(all.map((f) => [f.n, f]));
+
+        const imported = raw.map((rec, idx) => {
+          const r = { _id: uid() };
+          all.forEach((f) => (r[f.n] = ""));
+          const rowNo = idx + 2;                                   // sheet row, header is 1
+          const rowId = () => String(rec["Tract ID"] ?? rec.TractID ?? "").trim();
+
+          Object.entries(rec).forEach(([k, v]) => {
+            const key = resolve(k);
+            if (!key) { rejected.add(String(k).trim()); return; }
+            const f = fldByName[key];
+            const raw0 = v;
+            const txt = String(v ?? "").trim();
+            const log = (issue, kept) =>
+              problems.push({ row: rowNo, tract: rowId(), field: f ? f.a : key,
+                              name: key, value: String(raw0 ?? ""), issue, kept });
+
+            if (txt === "") { r[key] = ""; return; }
+
+            /* A type mismatch cannot be stored, so the cell is left blank and
+               reported. A value outside a pick list is kept as typed. */
+            if (f && f.y === "Date") {
+              const iso = toISODate(raw0);
+              if (!/^\d{4}-\d{2}-\d{2}$/.test(String(iso))) {
+                r[key] = ""; log("Not a date", "cleared"); return;
+              }
+              r[key] = iso; return;
+            }
+
+            if (f && isNumericType(f.y)) {
+              if (num(raw0) === null) { r[key] = ""; log("Not a number", "cleared"); return; }
+              r[key] = raw0; return;
+            }
+
+            if (f && f.o && f.o.length) {
+              const allowed = new Set(f.o.map((o) => String(o)));
+              if (f.y === "Multiple Selection") {
+                const bad = txt.split(",").map((x) => x.trim()).filter((x) => x && !allowed.has(x));
+                if (bad.length) log(`Not in list: ${bad.join(", ")}`, "kept");
+              } else if (!allowed.has(txt)) {
+                log("Not in list", "kept");
+              }
+            }
+
+            r[key] = raw0;
+          });
+          PROJECT_FIELDS.forEach((p) => { if (r[p] && !proj[p]) proj[p] = r[p]; });
+          const s = parseInt(r.SysID, 10);
+          if (!isNaN(s)) seq = Math.max(seq, s);
+          if (!r.TractType) r.TractType = r.ParentID ? "Owner" : "Parent";
+          if (!String(r.Online || "").trim()) r.Online = "Y";   // no column means nothing is retired
+          return r;
+        });
+        imported.forEach((r) => { if (!r.SysID) r.SysID = pad10(++seq); });
+
+        // Duplicate Tract IDs in the file break parent/owner matching, so they
+        // are reported alongside the value problems.
+        const idCount = {};
+        imported.forEach((r) => { const k = String(r.TractID || "").trim(); if (k) idCount[k] = (idCount[k] || 0) + 1; });
+        Object.entries(idCount).forEach(([k, nDup]) => {
+          if (Number(nDup) > 1) problems.push({ row: "\u2014", tract: k, field: "Tract ID", name: "TractID",
+            value: k, issue: `Appears ${Number(nDup)} times in the file`, kept: "kept" });
+        });
+
+        if (added.length) setCustomFields((p) => [...p, ...added]);
+        if (Object.keys(proj).length) setProject((p) => ({ ...p, ...proj }));
+        setSysSeq(seq + 1);
+
+        const freshOv = new Set();
+        setOv(freshOv);
+        setRows(derive(imported, freshOv));
+        setFilters({}); setSearch(""); setSort({ col: null, dir: 1 });
+        const first = imported.find((r) => !isOwnerRow(r));
+        setSelected(first ? String(first.TractID) : null);
+        setDirty(false);
+
+        const msg = [`Imported ${imported.length} rows.`];
+        if (added.length) msg.push(`${added.length} field(s) added from the Fields sheet.`);
+        if (rejected.size) msg.push(`Skipped unmatched columns: ${[...rejected].slice(0, 5).join(", ")}${rejected.size > 5 ? "…" : ""}`);
+        if (problems.length) msg.push(`${problems.length} value(s) need review.`);
+        notify(msg.join(" "));
+        if (problems.length) setModal({ type: "importErrors", problems, columns: [...rejected] });
+      } catch {
+        notify("That file could not be read as a line list. It needs a Line List sheet with a header row of field names.");
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
+  const onPickFile = (e) => {
+    const el = e.target;
+    const f = el && el.files ? el.files[0] : null;
+    if (el) el.value = "";
+    if (!f) return;
+    if (rows.length) setModal({ type: "confirmImport", file: f });
+    else doImport(f);
+  };
+
+
+  /* ========================= RENDER ========================= */
+  const formTabs = useMemo(() => {
+    const t = TAB_ORDER.filter((x) => x !== "Project");
+    return t.filter((x) => (x === "Crossings" ? selectedParent && hasCrossing(selectedParent) : true));
+  }, [selectedParent]);
+
+  useEffect(() => { if (!formTabs.includes(formTab)) setFormTab(formTabs[0] || "Parent Tract"); }, [formTabs, formTab]);
+  /* Moving to another tract lands on its parent record. The form tab is left
+     alone, so stepping through tracts stays on Legal, Cost, or wherever the
+     user is working. */
+  useEffect(() => { setFormSide("parent"); }, [selected]);
+
+  /* Opening the form from a grid lands on that grid's tab, so the context the
+     user was working in carries over instead of resetting to Parent Tract. */
+  /* Alt with the arrow keys walks tracts without leaving the keyboard, and the
+     modifier keeps it clear of plain arrow use inside a cell. */
+  useEffect(() => {
+    const h = (e) => {
+      if (!e.altKey || e.metaKey || e.ctrlKey) return;
+      if (e.key === "ArrowDown" || e.key === "ArrowRight") { e.preventDefault(); step(1); }
+      if (e.key === "ArrowUp" || e.key === "ArrowLeft") { e.preventDefault(); step(-1); }
+    };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [step]);
+
+  const openForm = useCallback((r) => {
+    const pid = String(isOwnerRow(r) ? r.ParentID : r.TractID);
+    setSelected(pid);
+    setView({ type: "form" });
+
+    const want = activeGrid ? activeGrid.tabs[0] : null;
+
+    // Some tabs only exist on one side of the record; land on the side that has it.
+    let side = isOwnerRow(r) ? r._id : "parent";
+    if (want && PARENT_ONLY_TABS.has(want)) {
+      side = "parent";
+    } else if (want === "Owner" && !isOwnerRow(r)) {
+      const first = rows.find((x) => isOwnerRow(x) && String(x.ParentID) === pid);
+      side = first ? first._id : "parent";
+    }
+
+    setFormSide(side);
+    if (want) setFormTab(want);
+  }, [activeGrid, rows]);
+
+  const formRow = formSide === "parent" ? selectedParent : rows.find((r) => r._id === formSide) || selectedParent;
+
+  return (
+    <div className="rlp" style={SHELL}>
+      <style>{CSS}</style>
+
+      <header className="topbar" style={BAR_TOP}>
+        <div className="brand">
+          <span className="mark">ROW</span>
+          <span style={{ display: "flex", flexDirection: "column", lineHeight: 1.1 }}>
+            <span className="wordmark">Line List<em>Pro</em></span>
+            <span style={{ fontSize: 9.5, letterSpacing: ".10em", textTransform: "uppercase",
+                           color: "#9FC2E5", fontWeight: 600 }}>{SCHEMA_VERSION}</span>
+          </span>
+        </div>
+
+        <div className="projstrip">
+          {PROJECT_FIELDS.map((n) => {
+            const f = fieldByName[n];
+            if (!f) return null;
+            return (
+              <label key={n} className="projfield">
+                <span>{f.a}</span>
+                {f.y === "List" ? (
+                  <select value={project[n] || ""} onChange={(e) => setProjectField(n, e.target.value)}>
+                    <option value="" />
+                    {(f.o || []).map((o) => <option key={o} value={o}>{o}</option>)}
+                  </select>
+                ) : (
+                  <input value={project[n] || ""} onChange={(e) => setProjectField(n, e.target.value)} />
+                )}
+              </label>
+            );
+          })}
+          <label className="projfield" style={{ minWidth: 130 }}>
+            <span>User Name</span>
+            <input value={currentUser} placeholder="Stamps new and edited rows"
+              onChange={(e) => setCurrentUser(e.target.value)} />
+          </label>
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flex: "0 0 auto",
+                      paddingRight: 12, marginRight: 2, borderRight: "1px solid #2C4B75" }}>
+          <span style={{ display: "flex", flexDirection: "column", lineHeight: 1.25, textAlign: "right" }}>
+            <span style={{ fontSize: 9.5, letterSpacing: ".11em", textTransform: "uppercase",
+                           color: "#F0C36B", fontWeight: 700 }}>Browser only</span>
+            <span style={{ fontSize: 11.5, color: "#D6E3F0", whiteSpace: "nowrap" }}>
+              Download file to save work
+            </span>
+          </span>
+        </div>
+
+        <div className="topactions">
+          <input ref={fileRef} type="file" accept=".xlsx,.xls" hidden onChange={onPickFile} />
+          <button className="btn pale" onClick={() => fileRef.current?.click()}>Import</button>
+          <button className="btn pale" onClick={askDownload}>Download</button>
+        </div>
+      </header>
+
+      {/* tract header strip — layout set inline so no stylesheet can restack it */}
+      <section style={TB_STRIP}>
+        {HEADER_FIELDS.map((n) => {
+          const f = fieldByName[n];
+          const val = selectedParent ? (displayValue(f, selectedParent[n]) || "\u2014") : "\u2014";
+          return (
+            <div key={n} title={`${f ? f.a : n}: ${val}`}
+                 style={{ ...TB_CELL, flex: `${HEADER_WEIGHT[n] || 1} 1 0%` }}>
+              <span style={TB_LABEL}>{HEADER_LABEL[n] || (f ? f.a : n)}</span>
+              <span style={{ ...TB_VALUE,
+                             color: !selectedParent ? "#AAB6C3" : isFlagged(selectedParent) ? FLAG_RED : "#1B2735",
+                             fontVariantNumeric: isNumericType(f?.y) ? "tabular-nums" : "normal" }}>{val}</span>
+            </div>
+          );
+        })}
+
+        <div style={{ ...TB_CELL, flex: "0 0 132px", gap: 4, borderRight: "none",
+                      background: "#F7F9FC", justifyContent: "flex-end" }}>
+          <button title="Previous tract  (Alt + \u2191)" disabled={cycleTracts.length < 2}
+            onClick={() => step(-1)} style={stepBtn(cycleTracts.length < 2)}>{"\u2039"}</button>
+          <span className="tnum" style={{ fontSize: 11.5, color: "#6B7B8D", minWidth: 52,
+                                          textAlign: "center", flex: "0 0 auto" }}>
+            {cycleIdx >= 0 ? `${cycleIdx + 1} of ${cycleTracts.length}` : `\u2014 of ${cycleTracts.length}`}
+          </span>
+          <button title="Next tract  (Alt + \u2193)" disabled={cycleTracts.length < 2}
+            onClick={() => step(1)} style={stepBtn(cycleTracts.length < 2)}>{"\u203A"}</button>
+        </div>
+      </section>
+
+      <nav className="nav" style={BAR_NAV}>
+        <span className="navcap" style={NAV_CAP}>Grids</span>
+        {GRIDS.map((g) => (
+          <button key={g.key}
+            style={navBtnStyle(view.type === "grid" && view.key === g.key)}
+            onClick={() => { setView({ type: "grid", key: g.key }); setSort({ col: null, dir: 1 }); setFilters({}); }}>
+            {g.label}
+          </button>
+        ))}
+        <span className="navdiv" style={{ width: 1, height: 18, background: "#3C6091", margin: "0 10px", flex: "0 0 auto" }} />
+        <span className="navcap" style={NAV_CAP}>Views</span>
+        <button style={navBtnStyle(view.type === "form", !selectedParent)} disabled={!selectedParent}
+          title={selectedParent ? "Edit the selected tract field by field" : "Select a tract first \u2014 click any row, or use the arrows in the header."}
+          onClick={() => setView({ type: "form" })}>Tract form</button>
+        <button style={navBtnStyle(view.type === "owners")} onClick={() => setView({ type: "owners" })}>Owner list</button>
+        <button style={navBtnStyle(view.type === "fields")} onClick={() => setView({ type: "fields" })}>Fields</button>
+      </nav>
+
+      <div className="toolbar" style={BAR_TOOL}>
+        <button className="btn solid" onClick={() => setModal({ type: "addtract" })}>Add tract</button>
+        <button className="btn ghost" disabled={!ownerEligible.length}
+          title={ownerEligible.length ? "Add an ownership interest to a tract" : "No tract can take owners yet. Permits and encroachments do not have them."}
+          onClick={() => setModal({ type: "addowner" })}>Add owner</button>
+
+        <Switch on={onlineOnly} onToggle={() => setOnlineOnly((v) => !v)} label="Online only"
+          title={onlineOnly ? "Showing online tracts only. Switch off to include offline tracts."
+                            : "Showing online and offline tracts."} />
+
+        <RowTypeFilter kinds={rowKinds} available={kindsHere} onToggle={toggleKind}
+          lockedTo={liveKinds.filter((k) => rowKinds[k]).length <= 1 ? liveKinds.filter((k) => rowKinds[k])[0] : null} />
+
+        <span className="spacer" />
+        {view.type === "grid" && (
+          <>
+            <span className="rowcount tnum">
+              {visibleRows.length}{visibleRows.length !== baseRows.length ? ` of ${baseRows.length}` : ""} rows
+              {onlineOnly && baseRows.length - visibleRows.length > 0 ? " \u00B7 offline hidden" : ""}
+              {liveKinds.filter((k) => !rowKinds[k]).length
+                ? ` \u00B7 ${liveKinds.filter((k) => !rowKinds[k]).join(" and ")} rows hidden` : ""}
+            </span>
+            <input className="searchbox" placeholder="Search every field" value={search} onChange={(e) => setSearch(e.target.value)} />
+            <button className={`btn ghost ${showFilters ? "on" : ""}`} onClick={() => setShowFilters((s) => !s)}>Filters</button>
+            <button className="btn ghost" onClick={() => setModal({ type: "columns" })}>Columns</button>
+            {(search || Object.values(filters).some(Boolean)) && (
+              <button className="btn link" onClick={() => { setSearch(""); setFilters({}); }}>Clear</button>
+            )}
+          </>
+        )}
+      </div>
+
+      <main className="stage" style={STAGE}>
+        {view.type === "grid" && (
+          rows.length === 0
+            ? <EmptyState onAdd={() => setModal({ type: "addtract" })} onImport={() => fileRef.current?.click()} />
+            : <GridView
+                key={activeGrid ? activeGrid.key : "grid"}
+                cols={cols} rows={visibleRows} sort={sort} setSort={setSort}
+                showFilters={showFilters} filters={filters} setFilters={setFilters}
+                setCell={setCell} selected={selected} onSelect={selectFromRow}
+                onDelete={(r) => setModal({ type: "confirmDelete", row: r })}
+                onOpenForm={openForm}
+                focusTract={selected} focusTick={focusTick}
+                ov={ov} parentIds={parentIds}
+              />
+        )}
+
+        {view.type === "form" && !selectedParent && (
+          <div className="notice pad">No tract selected. Pick one from any grid, then come back to the form.</div>
+        )}
+
+        {view.type === "form" && selectedParent && (
+          <FormView
+            tabs={formTabs} tab={formTab} setTab={setFormTab}
+            side={formSide} setSide={setFormSide}
+            parent={selectedParent} owners={selectedOwners} row={formRow}
+            allFields={allFields} setCell={setCell} ov={ov} parentIds={parentIds}
+          />
+        )}
+
+        {view.type === "owners" && (
+          <OwnersView groups={ownerGroups} fields={OWNER_BULK} fieldByName={fieldByName} onSave={bulkUpdateOwner} />
+        )}
+
+        {view.type === "fields" && (
+          <FieldsView
+            fields={allFields}
+            onAdd={() => setModal({ type: "addfield" })}
+            onDelete={(n) => { setCustomFields((p) => p.filter((f) => f.n !== n)); notify(`Field ${n} removed.`); }}
+          />
+        )}
+      </main>
+
+      {modal && (
+        <Modals
+          modal={modal} close={() => setModal(null)}
+          fieldByName={fieldByName} parentIds={parentIds} parentRows={parentRows} ownerEligible={ownerEligible}
+          allCols={allCols} hiddenSet={hiddenSet} gridKey={activeGrid?.key}
+          setHidden={setHidden}
+          onAddTract={addTract} onAddOwner={addOwner} nextOwnerId={nextOwnerId}
+          onDelete={deleteRow} onImport={doImport} onDownload={exportXlsx} onAskDownload={askDownload}
+          onAddField={(f) => {
+            if (fieldByName[f.n]) { notify(`A field named ${f.n} already exists.`); return; }
+            const withId = { ...f, i: 90000 + customFields.length + 1, custom: true };
+            setCustomFields((p) => [...p, withId]);
+            setRows((prev) => prev.map((r) => ({ ...r, [f.n]: "" })));
+            setModal(null);
+            notify(`Field ${f.a} added.`);
+          }}
+        />
+      )}
+
+      {toast && <div className="toast" role="status">{toast}</div>}
+    </div>
+  );
+}
+
+
+/* ========================= SWITCH ========================= */
+function Switch({ on, onToggle, label, title, disabled }) {
+  const live = on && !disabled;
+  return (
+    <button role="switch" aria-checked={!!on} aria-disabled={!!disabled} title={title}
+      onClick={() => { if (!disabled) onToggle(); }}
+      style={{ display: "flex", alignItems: "center", gap: 8, marginLeft: 6, padding: "4px 10px 4px 6px",
+               height: 28, borderRadius: 3, font: "inherit", fontSize: 12.5, fontWeight: 500,
+               whiteSpace: "nowrap", cursor: disabled ? "not-allowed" : "pointer",
+               background: disabled ? "#F1F4F8" : live ? "#E7F0FA" : "#FFFFFF",
+               border: `1px solid ${disabled ? "#E1E6EC" : live ? "#1F6FBF" : "#D4DBE4"}`,
+               color: disabled ? "#A6B1BD" : live ? "#17579A" : "#48586B" }}>
+      <span style={{ position: "relative", width: 30, height: 16, borderRadius: 8, flex: "0 0 auto",
+                     background: disabled ? "#D8DEE5" : live ? "#1F6FBF" : "#B7C3D0", transition: "background .12s" }}>
+        <span style={{ position: "absolute", top: 2, left: on ? 16 : 2, width: 12, height: 12,
+                       borderRadius: 6, background: "#fff", transition: "left .12s" }} />
+      </span>
+      {label}
+    </button>
+  );
+}
+
+/* ========================= ROW TYPE FILTER ========================= */
+const KIND_LABEL = { parent: "Parent", owner: "Owner", permit: "Crossing" };
+
+function RowTypeFilter({ kinds, available, onToggle, lockedTo }) {
+  const shown = ["parent", "owner", "permit"];
+  return (
+    <div style={{ display: "flex", alignItems: "center", marginLeft: 6, height: 28, borderRadius: 3,
+                  background: "#FFFFFF", border: "1px solid #D4DBE4" }}>
+      {shown.map((k, i) => {
+        const here = !!available[k];
+        const on = !!kinds[k] && here;
+        const locked = lockedTo === k;
+        const dim = !here;
+        return (
+          <React.Fragment key={k}>
+            {i > 0 && <span style={{ width: 1, height: 16, background: "#E7ECF2" }} />}
+            <button type="button" role="checkbox" aria-checked={on} aria-disabled={dim || locked}
+              onClick={() => { if (here && !locked) onToggle(k); }}
+              title={dim ? `This grid holds no ${KIND_LABEL[k].toLowerCase()} rows.`
+                    : locked ? `${KIND_LABEL[k]} is the only row type left showing, so it stays on.`
+                    : `Show ${KIND_LABEL[k].toLowerCase()} rows.`}
+              style={{ display: "flex", alignItems: "center", gap: 6, padding: "0 9px", height: 26,
+                       border: "none", background: "transparent", font: "inherit", fontSize: 12.5,
+                       fontWeight: on ? 600 : 500, whiteSpace: "nowrap",
+                       cursor: dim || locked ? "default" : "pointer",
+                       color: dim ? "#C2CAD3" : on ? "#17579A" : "#8A96A4" }}>
+              <span style={{ display: "flex", alignItems: "center", justifyContent: "center",
+                             width: 14, height: 14, borderRadius: 3, flex: "0 0 auto",
+                             background: dim ? "#F1F4F8" : on ? "#1F6FBF" : "#FFFFFF",
+                             border: `1px solid ${dim ? "#E1E6EC" : on ? "#1F6FBF" : "#B7C3D0"}` }}>
+                {on && <span style={{ color: "#fff", fontSize: 10, lineHeight: 1 }}>{"\u2713"}</span>}
+              </span>
+              {KIND_LABEL[k]}
+            </button>
+          </React.Fragment>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ========================= EMPTY STATE ========================= */
+function EmptyState({ onAdd, onImport }) {
+  return (
+    <div className="empty">
+      <div className="emptyrule" />
+      <h2>No tracts yet</h2>
+      <p>Start a line list from scratch, or bring in an existing one. Everything lives in this browser tab only — download a copy to keep it.</p>
+      <div className="emptyactions">
+        <button className="btn solid" onClick={onAdd}>Add tract</button>
+        <button className="btn ghost" onClick={onImport}>Import line list</button>
+      </div>
+    </div>
+  );
+}
+
+/* ========================= CELL EDITOR ========================= */
+const READ_ONLY = new Set(["SysID", "CreateBy", "CreateDate", "EditBy", "EditDate", "OwnerCount"]);
+
+/* Box model is inline so a header cell and the input beneath it always share
+   the same padding and border, whatever else is on the page. */
+const CELL_BASE = {
+  display: "block", boxSizing: "border-box", width: "100%", height: ROW_H - 2,
+  border: "none", margin: 0, padding: "0 8px", background: "transparent",
+  font: "inherit", fontSize: 12.5, color: "inherit",
+};
+
+function Cell({ f, row, setCell, ov, parentIds, inForm }) {
+  const v = row[f.n] ?? "";
+  const owner = isOwnerRow(row);
+  /* Currency and percent read formatted at rest and raw while being typed into,
+     so the caret never has to fight a thousands separator. */
+  const [editing, setEditing] = useState(false);
+  const formatted = MONEY.has(f.n) || PERCENT.has(f.n);
+
+  /* An imported value outside the pick list stays visible and flagged rather
+     than rendering as an empty select that hides what is actually stored. */
+  const offList = !!f.o && f.o.length > 0 && String(v).trim() !== "" &&
+    (f.y === "Multiple Selection"
+      ? String(v).split(",").map((x) => x.trim()).filter(Boolean).some((x) => !f.o.includes(x))
+      : !f.o.includes(String(v)));
+  const flag = offList ? { background: "#FBF1E7", boxShadow: "inset 0 -2px 0 #D8A657" } : null;
+  const offTitle = offList ? `Not one of the choices for ${f.a}. Imported as typed.` : undefined;
+  const isCalc = CALC.has(f.n) && !ov.has(ovKey(row._id, f.n));
+  const numeric = isNumericType(f.y);
+
+  /* Money reads as money — no derived-value tint. On a grid where nearly every
+     cell is calculated the marker was noise, and its underline cut across the
+     columns it was meant to sit inside. */
+  const markCalc = isCalc && !MONEY.has(f.n) && !PERCENT.has(f.n);
+  const st = inForm ? undefined : {
+    ...CELL_BASE,
+    textAlign: numeric ? "right" : "left",
+    fontVariantNumeric: numeric ? "tabular-nums" : "normal",
+    ...(markCalc ? { background: "#F2F6FB", boxShadow: "inset 0 -2px 0 #9EBFDF" } : {}),
+  };
+  const cls = `cell ${markCalc ? "calc" : ""} ${numeric ? "tnum num" : ""}`;
+
+  if (READ_ONLY.has(f.n)) {
+    return <span className="cell ro tnum" style={inForm ? undefined : { ...CELL_BASE, lineHeight: `${ROW_H - 2}px`, opacity: .68 }}>{String(v || "")}</span>;
+  }
+
+  if (f.n === "TractType") {
+    if (owner) return <span className="cell ro" style={inForm ? undefined : { ...CELL_BASE, lineHeight: `${ROW_H - 2}px`, opacity: .68 }}>Owner</span>;
+    return (
+      <select className={cls} style={st} value={v} onChange={(e) => setCell(row._id, f.n, e.target.value)}>
+        <option value="" />
+        {PARENT_TYPES.map((o) => <option key={o} value={o}>{o}</option>)}
+      </select>
+    );
+  }
+
+  if (f.n === "ParentID") {
+    if (!owner) return <span className="cell ro" style={inForm ? undefined : CELL_BASE} />;
+    return (
+      <select className={cls} style={st} value={v} onChange={(e) => setCell(row._id, f.n, e.target.value)}>
+        <option value="" />
+        {parentIds.map((p) => <option key={p} value={p}>{p}</option>)}
+      </select>
+    );
+  }
+
+  if (f.y === "List") {
+    return (
+      <select className={cls} style={{ ...st, ...flag }} title={offTitle}
+        value={v} onChange={(e) => setCell(row._id, f.n, e.target.value)}>
+        <option value="" />
+        {offList && <option value={v}>{`${v}  (not a choice)`}</option>}
+        {(f.o || []).map((o) => <option key={o} value={o}>{o}</option>)}
+      </select>
+    );
+  }
+
+  if (f.y === "Multiple Selection") {
+    const picked = String(v || "").split(",").map((s) => s.trim()).filter(Boolean);
+    if (!inForm) return <input className={cls} style={{ ...st, ...flag }} title={offTitle} value={v} onChange={(e) => setCell(row._id, f.n, e.target.value)} />;
+    const toggle = (o) => {
+      const next = picked.includes(o) ? picked.filter((x) => x !== o) : [...picked, o];
+      setCell(row._id, f.n, next.join(", "));
+    };
+    return (
+      <div className="chips">
+        {picked.filter((x) => !(f.o || []).includes(x)).map((x) => (
+          <button key={`x-${x}`} type="button" className="chip on" title={offTitle}
+            style={{ background: "#FBF1E7", borderColor: "#D8A657", color: "#7A5A1E" }}
+            onClick={() => toggle(x)}>{x}</button>
+        ))}
+        {(f.o || []).map((o) => (
+          <button key={o} type="button" className={`chip ${picked.includes(o) ? "on" : ""}`} onClick={() => toggle(o)}>{o}</button>
+        ))}
+      </div>
+    );
+  }
+
+  if (f.y === "Date") {
+    return <input type="date" className={cls} style={st} value={String(v || "").slice(0, 10)} onChange={(e) => setCell(row._id, f.n, e.target.value)} />;
+  }
+
+  if (f.y === "Long Text" && inForm) {
+    return <textarea className={cls} rows={3} value={v} onChange={(e) => setCell(row._id, f.n, e.target.value)} />;
+  }
+
+  return (
+    <input className={cls} style={st} inputMode={numeric ? "decimal" : undefined}
+      value={formatted && !editing ? displayValue(f, v) : v}
+      onFocus={() => setEditing(true)}
+      onBlur={() => setEditing(false)}
+      onChange={(e) => setCell(row._id, f.n, e.target.value)} />
+  );
+}
+
+/* ========================= GRID ========================= */
+const defaultWidth = (f) => {
+  if (f.n === "Order") return 80;
+  if (f.n === "TractID") return 170;
+  if (f.n === "TractName") return 200;
+  if (f.n === "TractType") return 105;
+  if (f.y === "Long Text") return 260;
+  if (f.y === "Date") return 140;
+  if (f.y === "List" || f.y === "Multiple Selection") return 175;
+  if (isNumericType(f.y)) return 130;
+  return 165;
+};
+const MIN_W = 64;
+const ACTION_W = 78;
+
+const TH_BASE = {
+  boxSizing: "border-box", position: "sticky", top: 0, zIndex: 3, backgroundClip: "padding-box",
+  background: "#EDF1F6", color: "#12325C",
+  padding: "0 8px", height: 30, lineHeight: "30px",
+  fontSize: 10.5, fontWeight: 700, letterSpacing: ".04em", textTransform: "uppercase",
+  borderRight: "1px solid #DCE3EB", borderBottom: "1px solid #D4DBE4",
+  whiteSpace: "nowrap", overflow: "hidden", userSelect: "none", cursor: "pointer",
+};
+const TD_BASE = {
+  boxSizing: "border-box", padding: 0, height: ROW_H,
+  borderRight: "1px solid #E4E9EF", borderBottom: "1px solid #EFF2F6",
+  overflow: "hidden", verticalAlign: "middle",
+};
+
+function GridView({ cols, rows, sort, setSort, showFilters, filters, setFilters, setCell, selected, onSelect, onDelete, onOpenForm, focusTract, focusTick, ov, parentIds }) {
+  const wrapRef = useRef(null);
+  const [top, setTop] = useState(0);
+  const [height, setHeight] = useState(600);
+  const [widths, setWidths] = useState({});
+  const drag = useRef(null);
+
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setHeight(el.clientHeight));
+    ro.observe(el);
+    setHeight(el.clientHeight);
+    return () => ro.disconnect();
+  }, []);
+
+  const widthOf = useCallback((f) => widths[f.n] ?? defaultWidth(f), [widths]);
+  const total = cols.reduce((a, f) => a + widthOf(f), 0) + ACTION_W;
+
+  /* column resize */
+  useEffect(() => {
+    const move = (e) => {
+      const d = drag.current;
+      if (!d) return;
+      const next = Math.max(MIN_W, d.startW + (e.clientX - d.startX));
+      setWidths((w) => (w[d.name] === next ? w : { ...w, [d.name]: next }));
+    };
+    const up = () => {
+      if (!drag.current) return;
+      drag.current = null;
+      document.body.style.cursor = "";
+    };
+    window.addEventListener("mousemove", move);
+    window.addEventListener("mouseup", up);
+    return () => { window.removeEventListener("mousemove", move); window.removeEventListener("mouseup", up); };
+  }, []);
+
+  const startResize = (e, f) => {
+    e.preventDefault();
+    e.stopPropagation();
+    drag.current = { name: f.n, startX: e.clientX, startW: widthOf(f) };
+    document.body.style.cursor = "col-resize";
+  };
+
+  /* Stepping to a tract scrolls it into view. Keyed on the tick rather than the
+     selection, so clicking a row does not yank the grid around. */
+  useEffect(() => {
+    if (!focusTick) return;
+    const el = wrapRef.current;
+    if (!el) return;
+    const i = rows.findIndex((r) => !isOwnerRow(r) && String(r.TractID) === String(focusTract));
+    if (i < 0) return;
+    const headH = showFilters ? 58 : 30;
+    const rowTop = i * ROW_H;
+    const view = el.clientHeight - headH;
+    if (rowTop < el.scrollTop || rowTop + ROW_H > el.scrollTop + view) {
+      el.scrollTop = Math.max(0, rowTop - Math.round(view / 3));
+    }
+  }, [focusTick]);
+
+  const OVERSCAN = 8;
+  const start = Math.max(0, Math.floor(top / ROW_H) - OVERSCAN);
+  const end = Math.min(rows.length, Math.ceil((top + height) / ROW_H) + OVERSCAN);
+  const slice = rows.slice(start, end);
+
+  const toggleSort = (n) => setSort((s) => (s.col === n ? { col: n, dir: -s.dir } : { col: n, dir: 1 }));
+
+  const handle = (f) => (
+    <span
+      onMouseDown={(e) => startResize(e, f)}
+      onClick={(e) => e.stopPropagation()}
+      title={`Drag to resize ${f.a}`}
+      style={{ position: "absolute", top: 0, right: 0, width: 7, height: "100%",
+               cursor: "col-resize", zIndex: 5, borderRight: "2px solid transparent" }}
+    />
+  );
+
+  return (
+    <div className="gridwrap" ref={wrapRef} onScroll={(e) => setTop(e.currentTarget.scrollTop)}
+      style={{ flex: "1 1 auto", minHeight: 0, height: "100%", overflow: "auto",
+               position: "relative", background: "#FFFFFF" }}>
+      <table className="grid"
+        style={{ tableLayout: "fixed", borderCollapse: "separate", borderSpacing: 0, width: total }}>
+        <colgroup>
+          {cols.map((f) => <col key={f.n} style={{ width: widthOf(f) }} />)}
+          <col style={{ width: ACTION_W }} />
+        </colgroup>
+
+        <thead style={{ position: "sticky", top: 0, zIndex: 6 }}>
+          <tr>
+            {cols.map((f, i) => {
+              const w = widthOf(f);
+              const numeric = isNumericType(f.y);
+              return (
+                <th key={f.n}
+                  onClick={() => toggleSort(f.n)}
+                  title={`${f.a}  (${f.n}) — click to sort, drag the edge to resize`}
+                  style={{ ...TH_BASE, position: i === 0 ? "sticky" : "sticky",
+                           left: i === 0 ? 0 : undefined, zIndex: i === 0 ? 5 : 3,
+                           width: w, minWidth: w, maxWidth: w,
+                           textAlign: numeric ? "right" : "left" }}>
+                  <span style={{ position: "relative", display: "block", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {f.a}
+                    {sort.col === f.n && <span style={{ marginLeft: 4, color: "#1F6FBF" }}>{sort.dir > 0 ? "\u25B2" : "\u25BC"}</span>}
+                  </span>
+                  {handle(f)}
+                </th>
+              );
+            })}
+            <th style={{ ...TH_BASE, width: ACTION_W, minWidth: ACTION_W, maxWidth: ACTION_W, cursor: "default", borderRight: "none" }} />
+          </tr>
+
+          {showFilters && (
+            <tr>
+              {cols.map((f, i) => {
+                const w = widthOf(f);
+                return (
+                  <th key={f.n} style={{ ...TH_BASE, top: 30, height: 28, lineHeight: "28px",
+                        background: "#F6F8FB", padding: "0 3px", cursor: "default",
+                        left: i === 0 ? 0 : undefined, zIndex: i === 0 ? 5 : 3,
+                        width: w, minWidth: w, maxWidth: w }}>
+                    <input value={filters[f.n] || ""} placeholder="…"
+                      onChange={(e) => setFilters((p) => ({ ...p, [f.n]: e.target.value }))}
+                      style={{ boxSizing: "border-box", width: "100%", height: 22, border: "1px solid #E7ECF2",
+                               borderRadius: 2, padding: "0 5px", fontSize: 11.5, background: "#fff", font: "inherit" }} />
+                  </th>
+                );
+              })}
+              <th style={{ ...TH_BASE, top: 30, height: 28, background: "#F6F8FB", cursor: "default", borderRight: "none" }} />
+            </tr>
+          )}
+        </thead>
+
+        <tbody>
+          {start > 0 && <tr style={{ height: start * ROW_H }}><td style={{ padding: 0, border: "none" }} colSpan={cols.length + 1} /></tr>}
+
+          {slice.map((r) => {
+            const isSel = String(isOwnerRow(r) ? r.ParentID : r.TractID) === String(selected);
+            const owner = isOwnerRow(r);
+            const permit = isPermitRow(r);
+            const rowBg = isSel ? "#E7F0FA" : permit ? "#FAF0EF" : owner ? "#EFF3F8" : "#FFFFFF";
+            const edge = permit ? "#C79C96" : owner ? "#B8D2EC" : null;
+            const flagged = isFlagged(r);
+            return (
+              <tr key={r._id} className={`${isSel ? "sel" : ""} ${owner ? "ownerrow" : ""} ${permit ? "permitrow" : ""}`}
+                onClick={() => onSelect(r)} onDoubleClick={() => onOpenForm(r)}
+                title={flagged ? "Design change pending on this tract" : undefined}
+                style={{ background: rowBg, color: flagged ? FLAG_RED : "#1B2735" }}>
+                {cols.map((f, i) => {
+                  const w = widthOf(f);
+                  return (
+                    <td key={f.n}
+                      style={{ ...TD_BASE, width: w, minWidth: w, maxWidth: w,
+                               borderRight: `1px solid ${isNumericType(f.y) ? "#D8DFE7" : "#E4E9EF"}`,
+                               ...(i === 0 ? { position: "sticky", left: 0, zIndex: 2, background: rowBg,
+                                               borderRight: "1px solid #D4DBE4",
+                                               boxShadow: edge ? `inset 3px 0 0 ${edge}` : undefined } : {}) }}>
+                      <Cell f={f} row={r} setCell={setCell} ov={ov} parentIds={parentIds} />
+                    </td>
+                  );
+                })}
+                <td style={{ ...TD_BASE, width: ACTION_W, textAlign: "center", whiteSpace: "nowrap", borderRight: "none" }}>
+                  <button className="openform" title="Open tract form"
+                    onClick={(e) => { e.stopPropagation(); onOpenForm(r); }}>Edit</button>
+                  <button className="del" title="Delete row"
+                    onClick={(e) => { e.stopPropagation(); onDelete(r); }}>{"\u00D7"}</button>
+                </td>
+              </tr>
+            );
+          })}
+
+          {end < rows.length && <tr style={{ height: (rows.length - end) * ROW_H }}><td style={{ padding: 0, border: "none" }} colSpan={cols.length + 1} /></tr>}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+
+/* ========================= FORM ========================= */
+const PARENT_ONLY_TABS = new Set(["Field Survey", "Plat", "Construction", "Operations", "Crossings", "Location", "Parent Tract"]);
+const OWNER_ONLY_TABS = new Set(["Owner"]);
+
+function FormView({ tabs, tab, setTab, side, setSide, parent, owners, row, allFields, setCell, ov, parentIds }) {
+  const onOwner = side !== "parent";
+  const disabledTab = onOwner ? PARENT_ONLY_TABS.has(tab) && tab !== "Owner" : OWNER_ONLY_TABS.has(tab);
+  const fields = allFields.filter((f) => f.t.includes(tab));
+
+  return (
+    <div className="form">
+      <div className="formside">
+        <button className={`sidebtn ${side === "parent" ? "on" : ""}`} onClick={() => setSide("parent")}>
+          <span className="sidecap">Parent</span>
+          <span className="sideval">{parent.TractID}</span>
+        </button>
+        {owners.map((o) => (
+          <button key={o._id} className={`sidebtn ${side === o._id ? "on" : ""}`} onClick={() => setSide(o._id)}>
+            <span className="sidecap">{o.TractID || "Owner"}</span>
+            <span className="sideval">{o.OwnerName || "—"}</span>
+          </button>
+        ))}
+      </div>
+
+      <div className="formmain">
+        {isFlagged(parent) && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 14px",
+                        background: "#FCEFEE", borderBottom: "1px solid #E9C8C4",
+                        color: FLAG_RED, fontSize: 12.5, fontWeight: 600 }}>
+            Design change pending on {parent.TractID}
+          </div>
+        )}
+        <div className="formtabs">
+          {tabs.map((t) => (
+            <button key={t} className={`ftab ${tab === t ? "on" : ""}`} onClick={() => setTab(t)}>{t}</button>
+          ))}
+        </div>
+
+        {disabledTab ? (
+          <div className="notice">
+            {tab} is recorded on the parent tract only. Switch to <strong>{parent.TractID}</strong> to edit it.
+          </div>
+        ) : (
+          <div className="fieldgrid">
+            {fields.map((f) => (
+              <label key={f.n} className={`field ${f.y === "Long Text" || f.y === "Multiple Selection" ? "wide" : ""}`}>
+                <span className="flabel">
+                  {f.a}
+                  {CALC.has(f.n) && !ov.has(ovKey(row._id, f.n)) && <em className="autotag">auto</em>}
+                </span>
+                <Cell f={f} row={row} setCell={setCell} ov={ov} parentIds={parentIds} inForm />
+              </label>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ========================= OWNER LIST (bulk edit) ========================= */
+function OwnersView({ groups, fields, fieldByName, onSave }) {
+  const [open, setOpen] = useState(null);
+  const [draft, setDraft] = useState({});
+
+  const start = (name, sample) => {
+    setOpen(name);
+    setDraft(Object.fromEntries(fields.map((n) => [n, sample[n] ?? ""])));
+  };
+
+  if (!groups.length) return <div className="notice pad">No owner rows yet. Add an owner to a tract and they'll be listed here.</div>;
+
+  return (
+    <div className="ownerlist">
+      <p className="lede">Every row carrying an owner's name updates together. Edit once here instead of tract by tract.</p>
+      {groups.map(([name, rs]) => (
+        <div key={name} className={`ownercard ${open === name ? "open" : ""}`}>
+          <button className="ownerhead" onClick={() => (open === name ? setOpen(null) : start(name, rs[0]))}>
+            <span className="ownername">{name}</span>
+            <span className="ownermeta tnum">{rs.length} row{rs.length > 1 ? "s" : ""}</span>
+            <span className="ownertracts">{rs.map((r) => r.TractID).filter(Boolean).slice(0, 6).join("  ")}{rs.length > 6 ? " …" : ""}</span>
+          </button>
+          {open === name && (
+            <div className="ownerbody">
+              <div className="fieldgrid">
+                {fields.map((n) => {
+                  const f = fieldByName[n];
+                  if (!f) return null;
+                  return (
+                    <label key={n} className="field">
+                      <span className="flabel">{f.a}</span>
+                      {f.y === "List" ? (
+                        <select className="cell" value={draft[n] || ""} onChange={(e) => setDraft((d) => ({ ...d, [n]: e.target.value }))}>
+                          <option value="" />
+                          {(f.o || []).map((o) => <option key={o} value={o}>{o}</option>)}
+                        </select>
+                      ) : (
+                        <input className="cell" value={draft[n] || ""} onChange={(e) => setDraft((d) => ({ ...d, [n]: e.target.value }))} />
+                      )}
+                    </label>
+                  );
+                })}
+              </div>
+              <div className="ownerfoot">
+                <button className="btn solid" onClick={() => { onSave(name, draft); setOpen(null); }}>Apply to all {rs.length} rows</button>
+                <button className="btn link" onClick={() => setOpen(null)}>Cancel</button>
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ========================= FIELDS ========================= */
+function FieldsView({ fields, onAdd, onDelete }) {
+  const [q, setQ] = useState("");
+  const shown = fields.filter((f) => !q || `${f.n} ${f.a} ${f.t.join(" ")}`.toLowerCase().includes(q.toLowerCase()));
+  return (
+    <div className="fieldsview">
+      <div className="fieldsbar">
+        <input className="searchbox" placeholder="Search fields" value={q} onChange={(e) => setQ(e.target.value)} />
+        <span className="rowcount tnum">{shown.length} of {fields.length}</span>
+        <span className="spacer" />
+        <button className="btn solid" onClick={onAdd}>Add custom field</button>
+      </div>
+      <div className="gridwrap">
+        <table className="grid fieldstable">
+          <thead>
+            <tr><th>ID</th><th>Name</th><th>Alias</th><th>Tabs</th><th>Type</th><th>Choices</th><th /></tr>
+          </thead>
+          <tbody>
+            {shown.map((f) => (
+              <tr key={f.n}>
+                <td className="tnum pad6">{f.i}</td>
+                <td className="pad6 mono">{f.n}</td>
+                <td className="pad6">{f.a}</td>
+                <td className="pad6 dim">{f.t.join(", ")}</td>
+                <td className="pad6 dim">{f.y}</td>
+                <td className="pad6 dim">{(f.o || []).join(" · ")}</td>
+                <td className="rowend">{f.custom && <button className="del" onClick={() => onDelete(f.n)}>×</button>}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+
+/* ========================= MODALS ========================= */
+function Modals(props) {
+  const { modal, close } = props;
+  useEffect(() => {
+    const h = (e) => { if (e.key === "Escape") close(); };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [close]);
+  return (
+    <div className="scrim" onMouseDown={(e) => { if (e.target === e.currentTarget) close(); }}>
+      <div className="sheet" role="dialog" aria-modal="true">
+        {modal.type === "addtract"      && <AddTract {...props} />}
+        {modal.type === "addowner"      && <AddOwner {...props} />}
+        {modal.type === "columns"       && <Columns {...props} />}
+        {modal.type === "addfield"      && <AddField {...props} />}
+        {modal.type === "confirmDelete" && <ConfirmDelete {...props} />}
+        {modal.type === "confirmImport" && <ConfirmImport {...props} />}
+        {modal.type === "remind"        && <Remind {...props} />}
+        {modal.type === "importErrors"  && <ImportErrors {...props} />}
+        {modal.type === "download"      && <DownloadSheet {...props} />}
+      </div>
+    </div>
+  );
+}
+
+function AddTract({ fieldByName, parentIds, onAddTract, close }) {
+  const [single, setSingle] = useState(true);
+  const [v, setV] = useState({ Order: "", TractID: "", TractName: "", TractType: "Parent", State: "", County: "" });
+  const blank = () => ({ OwnerName: "", OwnerType: "Individual", OwnerPct: "" });
+  const [owners, setOwners] = useState([blank()]);          // single is the default mode
+
+  const setOwner = (i, patch) => setOwners((p) => p.map((o, j) => (j === i ? { ...o, ...patch } : o)));
+
+  /* Single owner means one interest, whatever is parked in state behind it. */
+  const lines = single ? owners.slice(0, 1) : owners;
+  const filled = lines.filter((o) => String(o.OwnerName).trim());
+  const pctTotal = filled.reduce((a, o) => a + (parseFloat(o.OwnerPct) || 0), 0);
+  const anyPct = filled.some((o) => String(o.OwnerPct).trim());
+
+  const dup = v.TractID && parentIds.includes(String(v.TractID).trim());
+  const tractOk = TRACT_REQ.every((n) => String(v[n] || "").trim()) && !dup;
+  const overAllocated = anyPct && pctTotal > 100.0001;
+  const ok = tractOk && !overAllocated && (!single || filled.length === 1);
+
+  const typeOpts = fieldByName.OwnerType?.o || [];
+  const pctAlias = fieldByName.OwnerPct?.a || "Ownership Percentage";
+
+  return (
+    <>
+      <h3>Add tract</h3>
+
+      <div style={{ display: "flex", gap: 6, padding: "10px 18px 0" }}>
+        {[["Single owner", true], ["Multiple owners", false]].map(([label, val]) => (
+          <button key={label} type="button"
+            onClick={() => {
+              setSingle(val);
+              setOwners((p) => (val ? p.slice(0, 1) : p.length >= 2 ? p : [...p, blank()]));
+            }}
+            style={{ flex: 1, padding: "9px 12px", borderRadius: 4, font: "inherit", fontSize: 12.5,
+                     textAlign: "left", cursor: "pointer",
+                     background: single === val ? "#E7F0FA" : "#FFFFFF",
+                     border: `1px solid ${single === val ? "#1F6FBF" : "#D4DBE4"}`,
+                     color: single === val ? "#12325C" : "#48586B",
+                     fontWeight: single === val ? 600 : 500 }}>
+            {label}
+            <span style={{ display: "block", fontSize: 11, fontWeight: 400, color: "#6B7B8D", marginTop: 2 }}>
+              {val ? "Tract and its one owner, entered together" : "Tract with the interests you know so far"}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      <p className="sheetlede" style={{ paddingTop: 10 }}>
+        The tract name is the umbrella name on the line list \u2014 "BOB JONES ET AL". Order is
+        yours to set; it drives how the line list sorts and need not be unique.
+      </p>
+
+      <div className="fieldgrid">
+        {TRACT_REQ.map((n) => {
+          const f = fieldByName[n];
+          return (
+            <label key={n} className="field">
+              <span className="flabel">{f.a}<em className="req">required</em></span>
+              {n === "TractType" ? (
+                <select className="cell" value={v[n]} onChange={(e) => setV({ ...v, [n]: e.target.value })}>
+                  {PARENT_TYPES.map((o) => <option key={o} value={o}>{o}</option>)}
+                </select>
+              ) : (
+                <input className="cell" inputMode={n === "Order" ? "decimal" : undefined}
+                  value={v[n]} onChange={(e) => setV({ ...v, [n]: e.target.value })} />
+              )}
+            </label>
+          );
+        })}
+      </div>
+
+      <div style={{ margin: "0 18px", borderTop: "1px solid #E7ECF2", paddingTop: 12 }}>
+        <span style={{ fontSize: 10.5, letterSpacing: ".06em", textTransform: "uppercase",
+                       color: "#6B7B8D", fontWeight: 700 }}>
+          {single ? "The owner" : "Ownership interests"}
+        </span>
+        <p style={{ margin: "3px 0 0", fontSize: 12, color: "#6B7B8D" }}>
+          {single
+            ? <>Saved as its own row at {v.TractID ? `${v.TractID}.001` : "\u2039tract id\u203A.001"} with 100% interest, so owner records stay one row per payee.</>
+            : <>Each becomes its own row, numbered .001 upward. Leave a line blank to skip it, and add the rest later with Add owner. Percentages are optional \u2014 leave them empty until title work settles them.</>}
+        </p>
+      </div>
+
+      <div style={{ padding: "10px 18px 0", display: "flex", flexDirection: "column", gap: 8 }}>
+        {lines.map((o, i) => (
+          <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+            <label className="field" style={{ flex: "1 1 auto", minWidth: 0 }}>
+              {i === 0 && <span className="flabel">Owner Name{single && <em className="req">required</em>}</span>}
+              <input className="cell" value={o.OwnerName}
+                placeholder={single ? "" : `Owner ${i + 1}`}
+                onChange={(e) => setOwner(i, { OwnerName: e.target.value })} />
+            </label>
+            <label className="field" style={{ flex: "0 0 140px" }}>
+              {i === 0 && <span className="flabel">Owner Type</span>}
+              <select className="cell" value={o.OwnerType} onChange={(e) => setOwner(i, { OwnerType: e.target.value })}>
+                {typeOpts.map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </label>
+            {!single && (
+              <label className="field" style={{ flex: "0 0 110px" }}>
+                {i === 0 && <span className="flabel">{pctAlias}</span>}
+                <input className="cell tnum" inputMode="decimal" style={{ textAlign: "right" }}
+                  value={o.OwnerPct} onChange={(e) => setOwner(i, { OwnerPct: e.target.value })} />
+              </label>
+            )}
+          </div>
+        ))}
+
+        {!single && (
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <button type="button" className="btn ghost" style={{ height: 26 }}
+              onClick={() => setOwners((p) => [...p, blank()])}>Add another owner</button>
+            {owners.length > 2 && (
+              <button type="button" className="btn link" style={{ padding: "4px 6px" }}
+                onClick={() => setOwners((p) => p.slice(0, -1))}>Remove last</button>
+            )}
+            {anyPct && (
+              <span className="tnum" style={{ fontSize: 11.5, marginLeft: "auto",
+                    color: overAllocated ? "#93382B" : pctTotal < 99.9999 ? "#6B7B8D" : "#17579A" }}>
+                {Math.round(pctTotal * 1e4) / 1e4}% allocated
+                {!overAllocated && pctTotal < 99.9999 ? " \u00B7 remainder unassigned" : ""}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+
+      {dup && <div className="warn" style={{ marginTop: 12 }}>Tract ID {v.TractID} is already in this line list.</div>}
+      {overAllocated && <div className="warn" style={{ marginTop: 12 }}>Interests total {Math.round(pctTotal * 1e4) / 1e4}%. They cannot exceed 100%.</div>}
+
+      <div className="sheetfoot">
+        <button className="btn link" onClick={close}>Cancel</button>
+        <button className="btn solid" disabled={!ok}
+          onClick={() => onAddTract({ ...v, TractID: String(v.TractID).trim() }, lines, single)}>
+          {filled.length ? `Add tract and ${filled.length} owner${filled.length > 1 ? "s" : ""}` : "Add tract"}
+        </button>
+      </div>
+    </>
+  );
+}
+
+function AddOwner({ fieldByName, ownerEligible, onAddOwner, nextOwnerId, close }) {
+  const eligible = ownerEligible;
+  const [pid, setPid] = useState(eligible[0] ? String(eligible[0].TractID) : "");
+  const [v, setV] = useState({ OwnerID: "", OwnerType: "Individual", OwnerName: "" });
+  useEffect(() => { if (pid) setV((s) => ({ ...s, OwnerID: nextOwnerId(pid) })); }, [pid]);
+  const ok = pid && v.OwnerID && v.OwnerType && String(v.OwnerName).trim();
+  return (
+    <>
+      <h3>Add owner</h3>
+      <p className="sheetlede">County, state, section, acreage, and footage copy down from the parent tract and stay in step with it.</p>
+      <div className="fieldgrid">
+        <label className="field">
+          <span className="flabel">Parent tract<em className="req">required</em></span>
+          <select className="cell" value={pid} onChange={(e) => setPid(e.target.value)}>
+            {eligible.map((r) => <option key={r._id} value={String(r.TractID)}>{r.TractID} — {r.TractName}</option>)}
+          </select>
+        </label>
+        <label className="field">
+          <span className="flabel">Owner Tract ID<em className="req">required</em></span>
+          <input className="cell" value={v.OwnerID} onChange={(e) => setV({ ...v, OwnerID: e.target.value })} />
+        </label>
+        <label className="field">
+          <span className="flabel">Owner Type<em className="req">required</em></span>
+          <select className="cell" value={v.OwnerType} onChange={(e) => setV({ ...v, OwnerType: e.target.value })}>
+            {(fieldByName.OwnerType?.o || []).map((o) => <option key={o} value={o}>{o}</option>)}
+          </select>
+        </label>
+        <label className="field wide">
+          <span className="flabel">Owner Name<em className="req">required</em></span>
+          <input className="cell" value={v.OwnerName} onChange={(e) => setV({ ...v, OwnerName: e.target.value })} />
+        </label>
+      </div>
+      <div className="sheetfoot">
+        <button className="btn link" onClick={close}>Cancel</button>
+        <button className="btn solid" disabled={!ok}
+          onClick={() => onAddOwner({ ParentID: pid, TractID: v.OwnerID, OwnerID: v.OwnerID, OwnerType: v.OwnerType, OwnerName: v.OwnerName.trim() })}>
+          Add owner
+        </button>
+      </div>
+    </>
+  );
+}
+
+function Columns({ allCols, hiddenSet, gridKey, setHidden, close }) {
+  const toggle = (n) => setHidden((p) => {
+    const s = new Set(p[gridKey] || []);
+    s.has(n) ? s.delete(n) : s.add(n);
+    return { ...p, [gridKey]: s };
+  });
+  return (
+    <>
+      <h3>Columns</h3>
+      <p className="sheetlede">Hidden columns come back when you reload — this is a working view, not a saved layout.</p>
+      <div className="collist">
+        {allCols.map((f) => (
+          <label key={f.n} className="colrow">
+            <input type="checkbox" checked={!hiddenSet.has(f.n)} onChange={() => toggle(f.n)} />
+            <span>{f.a}</span>
+            <em className="mono dim">{f.n}</em>
+          </label>
+        ))}
+      </div>
+      <div className="sheetfoot">
+        <button className="btn link" onClick={() => setHidden((p) => ({ ...p, [gridKey]: new Set() }))}>Show all</button>
+        <button className="btn solid" onClick={close}>Done</button>
+      </div>
+    </>
+  );
+}
+
+function AddField({ onAddField, close }) {
+  const [f, setF] = useState({ n: "", a: "", t: "Parent Tract", y: "Short Text", o: "" });
+  /* Project fields live in the top bar and System fields are stamped by the
+     app, so neither tab can host a user-defined field. */
+  const nameOk = /^[A-Za-z0-9]{1,10}$/.test(f.n);
+  const ok = nameOk && f.a.trim();
+  return (
+    <>
+      <h3>Add custom field</h3>
+      <p className="sheetlede">Field names stay at ten characters or fewer, letters and numbers only, so the line list survives a trip through a shapefile.</p>
+      <div className="fieldgrid">
+        <label className="field">
+          <span className="flabel">Field name</span>
+          <input className="cell mono" maxLength={10} value={f.n} onChange={(e) => setF({ ...f, n: e.target.value })} />
+        </label>
+        <label className="field">
+          <span className="flabel">Alias</span>
+          <input className="cell" value={f.a} onChange={(e) => setF({ ...f, a: e.target.value })} />
+        </label>
+        <label className="field">
+          <span className="flabel">Tab</span>
+          <select className="cell" value={f.t} onChange={(e) => setF({ ...f, t: e.target.value })}>
+            {TAB_ORDER.filter((t) => t !== "Project" && t !== "System")
+              .map((t) => <option key={t} value={t}>{t}</option>)}
+          </select>
+        </label>
+        <label className="field">
+          <span className="flabel">Type</span>
+          <select className="cell" value={f.y} onChange={(e) => setF({ ...f, y: e.target.value })}>
+            {["Short Text", "Long Text", "Decimal Number", "Short Integer", "Long Integer", "Date", "List", "Multiple Selection"].map((t) => <option key={t} value={t}>{t}</option>)}
+          </select>
+        </label>
+        {(f.y === "List" || f.y === "Multiple Selection") && (
+          <label className="field wide">
+            <span className="flabel">Choices, comma separated</span>
+            <input className="cell" value={f.o} onChange={(e) => setF({ ...f, o: e.target.value })} />
+          </label>
+        )}
+      </div>
+      {f.n && !nameOk && <div className="warn">Use up to ten letters or numbers, no spaces or punctuation.</div>}
+      <div className="sheetfoot">
+        <button className="btn link" onClick={close}>Cancel</button>
+        <button className="btn solid" disabled={!ok}
+          onClick={() => {
+            const opts = f.o.split(",").map((s) => s.trim()).filter(Boolean);
+            onAddField({ n: f.n, a: f.a.trim(), t: [f.t], y: f.y, ...(opts.length ? { o: opts } : {}) });
+          }}>Add field</button>
+      </div>
+    </>
+  );
+}
+
+function ConfirmDelete({ modal, onDelete, close }) {
+  const r = modal.row;
+  const owner = isOwnerRow(r);
+  return (
+    <>
+      <h3>Delete {owner ? "owner row" : "tract"}</h3>
+      <p className="sheetlede">
+        {owner
+          ? <>This removes the row for <strong>{r.OwnerName || r.TractID}</strong>. Its title, acquisition, legal, and cost entries go with it.</>
+          : <>This removes tract <strong>{r.TractID}</strong> and every owner row under it. Nothing here can be undone — download a copy first if you need one.</>}
+      </p>
+      <div className="sheetfoot">
+        <button className="btn link" onClick={close}>Cancel</button>
+        <button className="btn danger" onClick={() => onDelete(r)}>Delete</button>
+      </div>
+    </>
+  );
+}
+
+function ConfirmImport({ modal, onImport, close }) {
+  return (
+    <>
+      <h3>Replace this line list</h3>
+      <p className="sheetlede">Importing clears everything on screen and loads the file in its place. Download a copy first if you haven't.</p>
+      <div className="sheetfoot">
+        <button className="btn link" onClick={close}>Cancel</button>
+        <button className="btn danger" onClick={() => { onImport(modal.file); close(); }}>Replace and import</button>
+      </div>
+    </>
+  );
+}
+
+function DownloadSheet({ modal, onDownload, close }) {
+  const [name, setName] = useState(modal.name || "");
+  const clean = name.replace(/\.xlsx$/i, "").trim();
+  return (
+    <>
+      <h3>Download line list</h3>
+      <p className="sheetlede">
+        The whole line list is written, filters and switches notwithstanding. Rename the file if
+        this is a revision or a copy for someone.
+      </p>
+      <div className="fieldgrid">
+        <label className="field wide">
+          <span className="flabel">File name</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <input className="cell" autoFocus value={name}
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && clean) onDownload(clean); }} />
+            <span style={{ color: "#6B7B8D", fontSize: 12.5, flex: "0 0 auto" }}>.xlsx</span>
+          </div>
+        </label>
+      </div>
+      <div className="sheetfoot">
+        <button className="btn link" onClick={close}>Cancel</button>
+        <button className="btn solid" disabled={!clean} onClick={() => onDownload(clean)}>Download</button>
+      </div>
+    </>
+  );
+}
+
+function Remind({ onAskDownload, close }) {
+  return (
+    <>
+      <h3>Download a copy</h3>
+      <p className="sheetlede">It's been ten minutes since your last download. This app keeps nothing — close the tab and the line list is gone.</p>
+      <div className="sheetfoot">
+        <button className="btn link" onClick={close}>Not now</button>
+        <button className="btn solid" onClick={onAskDownload}>Download line list</button>
+      </div>
+    </>
+  );
+}
+
+function ImportErrors({ modal, close }) {
+  const { problems = [], columns = [] } = modal;
+  const [copied, setCopied] = useState("");
+  const areaRef = useRef(null);
+
+  const header = ["Sheet Row", "Tract ID", "Field", "Field Name", "Value", "Issue", "Result"].join("\t");
+  const body = problems.map((p) =>
+    [p.row, p.tract, p.field, p.name, p.value, p.issue, p.kept === "cleared" ? "Left blank" : "Imported as typed"].join("\t")
+  );
+  const text = [
+    columns.length ? `Columns not recognised: ${columns.join(", ")}` : null,
+    columns.length ? "" : null,
+    header, ...body,
+  ].filter((x) => x !== null).join("\n");
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied("Copied to clipboard.");
+    } catch {
+      const el = areaRef.current;
+      if (el) { el.select(); try { document.execCommand("copy"); setCopied("Copied to clipboard."); } catch { setCopied("Select the text below and copy it."); } }
+    }
+    setTimeout(() => setCopied(""), 4000);
+  };
+
+  const cleared = problems.filter((p) => p.kept === "cleared").length;
+
+  return (
+    <>
+      <h3>Import finished with {problems.length} value{problems.length === 1 ? "" : "s"} to review</h3>
+      <p className="sheetlede">
+        Every row imported. {cleared > 0
+          ? <>{cleared} value{cleared === 1 ? " was" : "s were"} the wrong type for the field and could not be stored, so {cleared === 1 ? "that cell was" : "those cells were"} left blank. </>
+          : null}
+        Values outside a pick list were kept exactly as they appeared, so nothing is lost \u2014 they show in the grid with a warning tint until corrected.
+      </p>
+
+      {columns.length > 0 && (
+        <div className="warn" style={{ marginTop: 10 }}>
+          Columns not recognised and skipped: {columns.join(", ")}
+        </div>
+      )}
+
+      <div style={{ margin: "12px 18px 0", border: "1px solid #E7ECF2", borderRadius: 4, maxHeight: "40vh", overflow: "auto" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+          <thead>
+            <tr>
+              {["Row", "Tract ID", "Field", "Value", "Issue", "Result"].map((h) => (
+                <th key={h} style={{ position: "sticky", top: 0, background: "#EDF1F6", color: "#12325C",
+                      textAlign: "left", padding: "5px 8px", fontSize: 10.5, fontWeight: 700,
+                      letterSpacing: ".04em", textTransform: "uppercase", borderBottom: "1px solid #D4DBE4" }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {problems.map((p, i) => (
+              <tr key={i} style={{ borderBottom: "1px solid #F2F5F8" }}>
+                <td className="tnum" style={{ padding: "4px 8px", color: "#6B7B8D" }}>{p.row}</td>
+                <td style={{ padding: "4px 8px" }}>{p.tract || "\u2014"}</td>
+                <td style={{ padding: "4px 8px" }}>{p.field}</td>
+                <td style={{ padding: "4px 8px", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.value}</td>
+                <td style={{ padding: "4px 8px", color: "#6B7B8D" }}>{p.issue}</td>
+                <td style={{ padding: "4px 8px", color: p.kept === "cleared" ? "#93382B" : "#17579A" }}>
+                  {p.kept === "cleared" ? "Left blank" : "Kept"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <textarea ref={areaRef} readOnly value={text}
+        style={{ position: "absolute", left: -9999, top: 0, width: 10, height: 10 }} />
+
+      <div className="sheetfoot">
+        {copied && <span style={{ marginRight: "auto", fontSize: 12, color: "#17579A" }}>{copied}</span>}
+        <button className="btn ghost" onClick={copy}>Copy list</button>
+        <button className="btn solid" onClick={close}>Done</button>
+      </div>
+    </>
+  );
+}
+
+
+/* ========================= STYLES ========================= */
+const CSS = `
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+.rlp{
+  --navy:#12325C; --navy2:#1B4477; --navy3:#28558C;
+  --blue:#1F6FBF; --blue2:#17579A; --blue-pale:#E7F0FA; --blue-line:#B8D2EC;
+  --bg:#F4F6F9; --paper:#FFFFFF;
+  --rule:#D4DBE4; --rule2:#E7ECF2;
+  --text:#1B2735; --mid:#48586B; --dim:#6B7B8D;
+  --sel:#E7F0FA; --calc:#F2F6FB; --calcline:#9EBFDF;
+  --danger:#B33A2B;
+  position:fixed; inset:0; display:flex; flex-direction:column;
+  background:var(--bg); color:var(--text);
+  font-family:Inter,system-ui,sans-serif; font-size:13px; line-height:1.45;
+  -webkit-font-smoothing:antialiased;
+}
+.rlp *{box-sizing:border-box}
+.rlp button{font:inherit; color:inherit; cursor:pointer}
+.rlp input,.rlp select,.rlp textarea{font:inherit; color:inherit}
+.tnum{font-variant-numeric:tabular-nums}
+.mono{font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:11.5px}
+.dim{color:var(--dim)}
+.spacer{flex:1}
+.rlp :focus-visible{outline:2px solid var(--blue); outline-offset:1px}
+
+/* ---------- topbar ---------- */
+.topbar{display:flex; align-items:center; gap:20px; padding:0 16px; height:56px;
+  background:var(--navy); color:#F2F5F9; flex:0 0 auto}
+.brand{display:flex; align-items:baseline; gap:8px; flex:0 0 auto}
+.mark{font-weight:700; letter-spacing:.14em; font-size:12px; color:#BBD4EE;
+  border:1px solid #3C6091; padding:3px 6px; border-radius:2px}
+.wordmark{font-weight:600; font-size:14px; letter-spacing:-.01em}
+.wordmark em{font-style:normal; color:#9FC2E5; font-weight:500}
+
+.projstrip{display:flex; gap:10px; flex:1; min-width:0; overflow-x:auto}
+.projfield{display:flex; flex-direction:column; gap:2px; min-width:118px}
+.projfield span{font-size:9.5px; letter-spacing:.09em; text-transform:uppercase; color:#A8C0DA}
+.projfield input,.projfield select{background:#FFFFFF; border:1px solid #9FB6CE; border-radius:3px;
+  color:#16233A; padding:3px 6px; height:24px; width:100%}
+.projfield input:focus,.projfield select:focus{border-color:#fff}
+
+.topactions{display:flex; gap:8px; flex:0 0 auto}
+
+/* ---------- buttons ---------- */
+.btn{border:1px solid transparent; border-radius:3px; padding:5px 12px; height:28px;
+  font-size:12.5px; font-weight:500; white-space:nowrap}
+.btn.pale{background:#E9EFF6; color:#153458; border-color:#B7C8DA}
+.btn.pale:hover{background:#FFFFFF}
+.btn.solid{background:var(--blue); color:#fff}
+.btn.solid:hover{background:var(--blue2)}
+.btn.solid:disabled{background:#AEBCCB; cursor:not-allowed}
+.btn.ghost{background:var(--paper); border-color:var(--rule); color:var(--mid)}
+.btn.ghost:hover{border-color:#A9BACB; color:var(--text)}
+.btn.ghost.on{background:var(--blue-pale); border-color:var(--blue); color:var(--blue2)}
+.btn.ghost:disabled{color:#A6B1BD; cursor:not-allowed; background:#EDF0F4}
+.btn.link{background:none; color:var(--mid); padding:5px 8px}
+.btn.link:hover{color:var(--text); text-decoration:underline}
+.btn.danger{background:var(--danger); color:#fff}
+
+/* ---------- tract header strip (single horizontal row, never wraps) ---------- */
+.titleblock{
+  background:var(--paper); border-bottom:1px solid var(--rule);
+  border-top:2px solid var(--navy); flex:0 0 auto; height:44px; overflow:hidden;
+}
+.tbcell{
+  gap:7px; padding:0 12px; height:44px; line-height:44px;
+  border-right:1px solid var(--rule2); white-space:nowrap; overflow:hidden;
+}
+.tbcell:last-child{border-right:none}
+.tbcount{background:#F7F9FC}
+.tblabel{flex:0 0 auto; font-size:9.5px; letter-spacing:.11em; text-transform:uppercase;
+  color:var(--dim); font-weight:600}
+.tbvalue{flex:1 1 auto; min-width:0; font-size:13px; font-weight:600; color:var(--text);
+  overflow:hidden; text-overflow:ellipsis}
+.titleblock.empty .tbvalue{color:#AAB6C3; font-weight:500}
+
+/* ---------- nav ---------- */
+.nav{display:flex; align-items:center; gap:2px; padding:0 12px; height:40px;
+  background:var(--navy2); overflow-x:auto; flex:0 0 auto}
+.navcap{font-size:9px; letter-spacing:.12em; text-transform:uppercase; color:#B9D4EE;
+  margin-right:8px; flex:0 0 auto; font-weight:600}
+.navdiv{width:1px; height:18px; background:#3C6091; margin:0 10px; flex:0 0 auto}
+.navbtn{background:none; border:none; color:#FFFFFF; padding:6px 11px; border-radius:3px;
+  font-size:13px; font-weight:500; white-space:nowrap; flex:0 0 auto}
+.navbtn:hover{background:var(--navy3); color:#FFFFFF}
+.navbtn.on{background:var(--paper); color:var(--navy); font-weight:600}
+.navbtn:disabled{color:#8FAAC6; cursor:not-allowed; background:none}
+
+/* ---------- toolbar ---------- */
+.toolbar{display:flex; align-items:center; gap:8px; padding:8px 12px;
+  border-bottom:1px solid var(--rule); flex:0 0 auto}
+.rowcount{font-size:11.5px; color:var(--dim)}
+.searchbox{background:var(--paper); border:1px solid var(--rule); border-radius:3px;
+  padding:4px 9px; height:28px; width:220px}
+.searchbox:focus{border-color:var(--blue)}
+
+/* ---------- stage ---------- */
+.stage{flex:1; min-height:0; display:flex; flex-direction:column; overflow:hidden}
+
+/* ---------- grid ---------- */
+.gridwrap{flex:1 1 auto; min-height:0; overflow:auto; position:relative; background:var(--paper)}
+/* the header must be the only thing pinned while the body scrolls under it */
+.grid thead{position:sticky; top:0; z-index:6}
+.grid{border-collapse:separate; border-spacing:0; table-layout:fixed}
+.grid th{position:sticky; top:0; z-index:3; background:#EDF1F6; text-align:left;
+  box-sizing:border-box; padding:0 8px; height:30px; font-size:10.5px; font-weight:700;
+  letter-spacing:.04em; text-transform:uppercase; color:var(--navy);
+  border-right:1px solid var(--rule2); border-bottom:1px solid var(--rule);
+  cursor:pointer; user-select:none; white-space:nowrap; overflow:hidden; vertical-align:middle}
+/* numeric columns are right-aligned in the body, so their headers are too */
+.grid th.numhead{text-align:right}
+.grid th.numhead .thlabel{float:none}
+.grid th:hover{background:#E2E9F2}
+.thlabel{display:inline-block; max-width:100%; overflow:hidden; text-overflow:ellipsis; vertical-align:bottom}
+.sortmark{margin-left:4px; color:var(--blue)}
+.grid th.stick,.grid td.stick{position:sticky; left:0; z-index:2}
+.grid th.stick{z-index:4}
+.grid td.stick{background:var(--paper); border-right:1px solid var(--rule)}
+.grid tr.sel td.stick{background:var(--sel)}
+.grid tr.ownerrow td.stick{background:#EFF3F8}
+.grid tr.permitrow td.stick{background:#FAF0EF}
+.grid tr.sel.ownerrow td.stick,.grid tr.sel.permitrow td.stick{background:var(--sel)}
+.filterrow th{top:30px; z-index:3; background:#F6F8FB; padding:2px 3px; height:28px; cursor:default}
+.filterrow input{width:100%; height:22px; border:1px solid var(--rule2); border-radius:2px;
+  padding:0 5px; font-size:11.5px; background:#fff}
+.thend{width:72px; cursor:default}
+
+.grid td{box-sizing:border-box; height:${ROW_H}px; padding:0; border-right:1px solid #EFF2F6;
+  border-bottom:1px solid #EFF2F6; overflow:hidden; vertical-align:middle}
+/* Row shading carries the row's role: owner rows a step of grey-blue,
+   crossing tracts (Permit, Encroachment) a faded maroon. Exclusive Easement
+   is an ordinary parent tract, so it stays white. Hover keeps each hue. */
+.grid tr.ownerrow{background:#EFF3F8}
+.grid tr.permitrow{background:#FAF0EF}
+.grid tr.sel{background:var(--sel)}
+.grid tr:hover td{background:#F3F7FC}
+.grid tr.ownerrow:hover td{background:#E6ECF4}
+.grid tr.permitrow:hover td{background:#F5E4E2}
+.grid tr.sel:hover td{background:#DCEAF8}
+.grid tr.sel.ownerrow:hover td,.grid tr.sel.permitrow:hover td{background:#DCEAF8}
+
+.cell{display:block; box-sizing:border-box; width:100%; height:${ROW_H - 2}px;
+  border:none; background:transparent; padding:0 8px; font-size:12.5px; margin:0}
+.cell:focus{background:#fff; box-shadow:inset 0 0 0 2px var(--blue); border-radius:2px}
+.cell.num{text-align:right}
+.cell.calc{background:var(--calc); box-shadow:inset 0 -2px 0 var(--calcline)}
+.cell.ro{display:flex; align-items:center; color:var(--dim); font-size:12px}
+select.cell{appearance:none; cursor:pointer}
+.rowend{text-align:center; background:var(--paper); white-space:nowrap; padding:0 2px}
+.openform{background:none; border:1px solid var(--rule); border-radius:3px; color:var(--blue2);
+  font-size:11px; font-weight:600; padding:2px 6px; margin-right:2px}
+.openform:hover{background:var(--blue-pale); border-color:var(--blue)}
+.del{background:none; border:none; color:#AFBAC6; font-size:16px; line-height:1; padding:2px 6px; border-radius:3px}
+.del:hover{color:var(--danger); background:#F8EAE7}
+
+/* ---------- empty ---------- */
+.empty{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:10px; text-align:center; padding:40px}
+.emptyrule{width:56px; height:2px; background:var(--blue)}
+.empty h2{margin:0; font-size:18px; font-weight:600}
+.empty p{margin:0; max-width:420px; color:var(--mid)}
+.emptyactions{display:flex; gap:8px; margin-top:8px}
+
+/* ---------- form ---------- */
+.form{flex:1; min-height:0; display:flex; overflow:hidden}
+.formside{flex:0 0 210px; border-right:1px solid var(--rule); background:#F7F9FC; overflow:auto; padding:8px}
+.sidebtn{display:flex; flex-direction:column; gap:1px; width:100%; text-align:left;
+  background:none; border:1px solid transparent; border-radius:4px; padding:7px 9px; margin-bottom:3px}
+.sidebtn:hover{background:#EBF1F8}
+.sidebtn.on{background:var(--paper); border-color:var(--blue); box-shadow:0 1px 2px rgba(18,50,92,.10)}
+.sidecap{font-size:9.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--dim)}
+.sideval{font-size:13px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+
+.formmain{flex:1; min-width:0; display:flex; flex-direction:column; overflow:hidden}
+.formtabs{display:flex; gap:2px; padding:8px 14px 0; overflow-x:auto;
+  border-bottom:1px solid var(--rule); background:#F7F9FC; flex:0 0 auto}
+.ftab{background:none; border:none; border-bottom:3px solid transparent; padding:7px 12px;
+  font-size:12.5px; font-weight:500; color:var(--mid); white-space:nowrap; flex:0 0 auto}
+.ftab:hover{color:var(--navy); background:#EBF1F8}
+.ftab.on{color:var(--navy); font-weight:700; border-bottom-color:var(--blue); background:var(--paper)}
+
+.fieldgrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:12px 16px;
+  padding:16px; overflow:auto}
+.field{display:flex; flex-direction:column; gap:3px; min-width:0}
+.field.wide{grid-column:1/-1}
+.flabel{display:flex; align-items:center; gap:6px; font-size:10.5px; letter-spacing:.05em;
+  text-transform:uppercase; color:var(--mid); font-weight:600}
+.autotag{font-style:normal; font-size:9px; letter-spacing:.08em; color:var(--blue2);
+  background:var(--calc); border:1px solid var(--calcline); border-radius:2px; padding:0 4px}
+.req{font-style:normal; font-size:9px; letter-spacing:.06em; color:var(--danger)}
+.field .cell{height:30px; border:1px solid var(--rule); border-radius:3px; background:var(--paper)}
+.field textarea.cell{height:auto; padding:6px 8px; resize:vertical}
+.chips{display:flex; flex-wrap:wrap; gap:5px}
+.chip{background:var(--paper); border:1px solid var(--rule); border-radius:12px; padding:3px 10px;
+  font-size:12px; color:var(--mid)}
+.chip.on{background:var(--blue-pale); border-color:var(--blue); color:var(--blue2); font-weight:600}
+
+.notice{padding:14px 16px; color:var(--mid); background:#F7F9FC;
+  border:1px dashed var(--rule); border-radius:4px; margin:16px}
+.notice.pad{margin:24px}
+
+/* ---------- owner list ---------- */
+.ownerlist{flex:1; overflow:auto; padding:16px 18px}
+.lede{margin:0 0 14px; color:var(--mid); max-width:620px}
+.ownercard{background:var(--paper); border:1px solid var(--rule2); border-radius:4px; margin-bottom:6px}
+.ownercard.open{border-color:var(--blue)}
+.ownerhead{display:flex; align-items:baseline; gap:14px; width:100%; text-align:left;
+  background:none; border:none; padding:10px 14px}
+.ownername{font-weight:600; font-size:13.5px}
+.ownermeta{font-size:11.5px; color:var(--dim); flex:0 0 auto}
+.ownertracts{font-size:11.5px; color:var(--dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.ownerbody{border-top:1px solid var(--rule2)}
+.ownerfoot{display:flex; gap:8px; align-items:center; padding:0 16px 14px}
+
+/* ---------- fields view ---------- */
+.fieldsview{flex:1; min-height:0; display:flex; flex-direction:column}
+.fieldsbar{display:flex; align-items:center; gap:10px; padding:12px 16px; border-bottom:1px solid var(--rule)}
+.fieldstable{width:100%; table-layout:auto}
+.fieldstable td{height:28px}
+.pad6{padding:0 10px; font-size:12.5px}
+
+/* ---------- modal ---------- */
+.scrim{position:fixed; inset:0; background:rgba(18,50,92,.42); display:flex;
+  align-items:center; justify-content:center; padding:24px; z-index:50}
+.sheet{background:var(--paper); border-radius:5px; width:min(640px,100%); max-height:88vh;
+  overflow:auto; box-shadow:0 18px 48px rgba(18,50,92,.30); border-top:3px solid var(--blue)}
+.sheet h3{margin:0; padding:16px 18px 4px; font-size:16px; font-weight:600; color:var(--navy)}
+.sheetlede{margin:0; padding:0 18px; color:var(--mid)}
+.sheet .fieldgrid{padding:14px 18px}
+.sheetfoot{display:flex; justify-content:flex-end; gap:8px; padding:12px 18px 16px;
+  border-top:1px solid var(--rule2)}
+.warn{margin:0 18px; padding:8px 10px; background:#FAEDEA; border-left:3px solid var(--danger);
+  color:#8E2E22; font-size:12.5px; border-radius:2px}
+.collist{padding:12px 18px; max-height:46vh; overflow:auto}
+.colrow{display:flex; align-items:center; gap:9px; padding:4px 0}
+.colrow em{margin-left:auto; font-style:normal}
+
+/* ---------- toast ---------- */
+.toast{position:fixed; left:50%; bottom:20px; transform:translateX(-50%);
+  background:var(--navy); color:#F2F5F9; padding:10px 16px; border-radius:4px;
+  box-shadow:0 8px 22px rgba(18,50,92,.30); max-width:640px; z-index:60; font-size:12.5px}
+
+@media (prefers-reduced-motion:no-preference){
+  .toast{animation:rise .18s ease-out}
+  @keyframes rise{from{opacity:0; transform:translate(-50%,8px)}to{opacity:1; transform:translate(-50%,0)}}
+}
+@media (max-width:1100px){
+  .titleblock{overflow-x:auto}
+}
+@media (max-width:900px){
+  .projstrip{display:none}
+  .formside{flex-basis:150px}
+}
+`;
+
+
+/* ---- browser mount (added for GitHub Pages, no build step) ---- */
+ReactDOM.createRoot(document.getElementById("root")).render(
+  React.createElement(React.StrictMode, null, React.createElement(ROWLineListPro))
+);
+
+</script>
+</body>
+</html>
