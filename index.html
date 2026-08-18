@@ -1548,26 +1548,84 @@ function Cell({ f, row, setCell, ov, parentIds, inForm }) {
     return (React.createElement("input", { className: cls, style: st, inputMode: numeric ? "decimal" : undefined, value: formatted && !editing ? displayValue(f, v) : v, onFocus: () => setEditing(true), onBlur: () => setEditing(false), onChange: (e) => setCell(row._id, f.n, e.target.value) }));
 }
 /* ========================= GRID ========================= */
-const defaultWidth = (f) => {
-    if (f.n === "Order")
-        return 80;
-    if (f.n === "TractID")
-        return 170;
-    if (f.n === "TractName")
-        return 200;
-    if (f.n === "TractType")
-        return 105;
-    if (f.y === "Long Text")
-        return 260;
+/* Column widths are measured from the values actually present rather than set
+   per type. The two complaints point opposite ways: a tract number overflowed
+   a fixed default, while a Y/N column spent three quarters of its width on
+   nothing. A fixed number cannot satisfy both, and it cannot know how long a
+   given project's tract numbering runs. */
+const BODY_FONT_CSS = '12.5px Inter, system-ui, sans-serif';
+const HEAD_FONT_CSS = '700 10.5px Inter, system-ui, sans-serif';
+const HEAD_TRACKING = 0.04 * 10.5; // letter-spacing measureText ignores
+const CELL_PAD = 20; // 8px each side plus the column rule
+const CHEVRON = 18; // dropdown arrow on a select
+/* Canvas gives the real advance width for the real font, which guessing at a
+   per-character average does not. Falls back to an estimate if the context is
+   unavailable. */
+const textWidth = (() => {
+    let ctx;
+    return (str, font, tracking = 0) => {
+        const s = String(str ?? "");
+        if (ctx === undefined) {
+            try {
+                ctx = document.createElement("canvas").getContext("2d");
+            }
+            catch {
+                ctx = null;
+            }
+        }
+        if (!ctx)
+            return s.length * 7.4 + tracking * s.length;
+        ctx.font = font;
+        return ctx.measureText(s).width + tracking * s.length;
+    };
+})();
+const clampW = (n, lo, hi) => Math.round(Math.min(hi, Math.max(lo, n)));
+/* Measuring every cell would be wasteful, so the few longest strings by
+   character count are measured and the widest of those wins. */
+function widestValue(f, rows) {
+    const seen = [];
+    for (let i = 0; i < rows.length; i++) {
+        const v = rows[i][f.n];
+        if (v === undefined || v === null || v === "")
+            continue;
+        const s = String(v);
+        if (seen.length < 3) {
+            seen.push(s);
+            seen.sort((a, b) => a.length - b.length);
+        }
+        else if (s.length > seen[0].length) {
+            seen[0] = s;
+            seen.sort((a, b) => a.length - b.length);
+        }
+    }
+    return seen.reduce((a, s) => Math.max(a, textWidth(s, BODY_FONT_CSS)), 0);
+}
+/* Text sitting flush against a column edge reads as cut off even when it
+   technically fits, so a measured column gets a little air. */
+const SLACK = 12;
+function autoWidth(f, rows) {
+    // A Y/N column needs one character. Nothing else about it is worth space.
+    if (isYesNoList(f))
+        return 64;
     if (f.y === "Date")
-        return 140;
-    if (f.y === "List" || f.y === "Multiple Selection")
-        return 175;
-    if (isNumericType(f.y))
-        return 130;
-    return 165;
-};
-const MIN_W = 64;
+        return 132; // the native picker needs room
+    if (f.y === "Long Text")
+        return 260; // truncated anyway; open the form
+    /* Keep the header readable, but never let a long header dictate a wide
+       column: "Cultural Resource Survey Required" would swamp its own data. */
+    const headFloor = Math.min(textWidth(f.a, HEAD_FONT_CSS, HEAD_TRACKING) + CELL_PAD, 124);
+    if (f.y === "List" || f.y === "Multiple Selection") {
+        /* Size to the choices in use, not to the longest the list allows. Tract
+           Type offers "Exclusive Easement" but a project with none of them should
+           not pay for the width all the way down the grid. The full list is the
+           fallback while the grid is empty. */
+        const used = widestValue(f, rows);
+        const longest = used || (f.o || []).reduce((a, o) => Math.max(a, textWidth(o, BODY_FONT_CSS)), 0);
+        return clampW(Math.max(longest + CELL_PAD + CHEVRON, headFloor), 92, 210);
+    }
+    return clampW(Math.max(widestValue(f, rows) + CELL_PAD + SLACK, headFloor), 76, 260);
+}
+const MIN_W = 56;
 const ACTION_W = 78;
 const TH_BASE = {
     boxSizing: "border-box", position: "sticky", top: 0, zIndex: 3, backgroundClip: "padding-box",
@@ -1597,7 +1655,8 @@ function GridView({ cols, rows, sort, setSort, showFilters, filters, setFilters,
         setHeight(el.clientHeight);
         return () => ro.disconnect();
     }, []);
-    const widthOf = useCallback((f) => widths[f.n] ?? defaultWidth(f), [widths]);
+    const autoWidths = useMemo(() => Object.fromEntries(cols.map((f) => [f.n, autoWidth(f, rows)])), [cols, rows.length]);
+    const widthOf = useCallback((f) => widths[f.n] ?? autoWidths[f.n] ?? 150, [widths, autoWidths]);
     const total = cols.reduce((a, f) => a + widthOf(f), 0) + ACTION_W;
     /* column resize */
     useEffect(() => {
